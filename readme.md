@@ -1,43 +1,66 @@
-﻿# target
+﻿# 作者的源码
+git clone https://github.com/yangminz/bcst_csapp.git
+
+下载后要切到某个commit
+git reset --hard <commit version>
+就可以切换到某个
+
+# target
 使用c语言编写一个汇编处理器来解析汇编指令
-
-
+例如一个简单的add c语言程序如下
 ```c
-uint64_t add(uint64_t,uint64_t);
-int main(int argc, char const *argv[])
-{
-   printf("%d",add(1,2));
-   return 0;
-}
-
-uint64_t add(uint64_t i1,uint64_t i2){
+unsigned add(unsigned i1,unsigned i2){
     return i1+i2;
 }
-```
-通过gcc -Og -S main.c 得到main.s,截取重要的汇编如下
 
+int main(){
+    int i1 = 2;
+    int i2 = 5;
+    add(i1,i2);
+}
+```
+
+通过gcc -Og -S add.c 得到add.s
+通过gcc -g add.c 得到main
+
+通过objdump -d add > add.txt , 保留main和add
 
 ```s
-main:
-	movl	$2, %edx
-	movl	$1, %ecx
-	call	add
-	movq	%rax, %rdx
-	leaq	.LC0(%rip), %rcx
-	call	printf
-	movl	$0, %eax
-	addq	$40, %rsp
-add:
-    leaq	(%rcx,%rdx), %rax
-	ret    
+00000000000005fa <add>:
+ 5fa:	55                   	push   %rbp
+ 5fb:	48 89 e5             	mov    %rsp,%rbp
+ 5fe:	89 7d fc             	mov    %edi,-0x4(%rbp)
+ 601:	89 75 f8             	mov    %esi,-0x8(%rbp)
+ 604:	8b 55 fc             	mov    -0x4(%rbp),%edx
+ 607:	8b 45 f8             	mov    -0x8(%rbp),%eax
+ 60a:	01 d0                	add    %edx,%eax
+ 60c:	5d                   	pop    %rbp
+ 60d:	c3                   	retq   
+
+000000000000060e <main>:
+ 60e:	55                   	push   %rbp
+ 60f:	48 89 e5             	mov    %rsp,%rbp
+ 612:	48 83 ec 10          	sub    $0x10,%rsp
+ 616:	c7 45 f8 02 00 00 00 	movl   $0x2,-0x8(%rbp)
+ 61d:	c7 45 fc 05 00 00 00 	movl   $0x5,-0x4(%rbp)
+ 624:	8b 55 fc             	mov    -0x4(%rbp),%edx
+ 627:	8b 45 f8             	mov    -0x8(%rbp),%eax
+ 62a:	89 d6                	mov    %edx,%esi
+ 62c:	89 c7                	mov    %eax,%edi
+ 62e:	e8 c7 ff ff ff       	callq  5fa <add>
+ 633:	b8 00 00 00 00       	mov    $0x0,%eax
+ 638:	c9                   	leaveq 
+ 639:	c3                   	retq   
+ 63a:	66 0f 1f 44 00 00    	nopw   0x0(%rax,%rax,1)    
 ```
 
-通过gcc -g main.c -o main 得到main 
-
-gdb main
+gdb add
 l -- 列出代码
 b 7 -- 断点到哪行
-run -- 单步运行
+run -- 运行
+n -- next 单步运行
+n 2 -- 下2步
+step -- 进入
 info r -- 查看寄存器里的值
 
 
@@ -58,6 +81,8 @@ Gdb调试过程：
 14、退出调试 q
 15、b num if i20 设置断点的触发条件
 16、condition num i50 改变断点的触发条件
+
+现在要做的就是要使用c语言来模拟上述的过程，最重要就是指令的解析
 
 
 # c语言的基础知识
@@ -86,6 +111,27 @@ rax就是真个结构是64位，其中eax占了0-31, ax占了0-16，al占了0-7�
 - printf 里的一些格式化 
 %x对应int 和unsigned int. %lx对应long 和unsigned long
 %x是以16进制输出整型数据，%lx就是以16进制输出长整型数据
+%p 对应的是指针
+
+
+%a(%A)     浮点数、十六进制数字和p-(P-)记数法(C99) 
+%c         字符 
+%d         有符号十进制整数 
+%f         浮点数(包括float和doulbe) 
+%e(%E)     浮点数指数输出[e-(E-)记数法] 
+%g(%G)     浮点数不显无意义的零"0" 
+%i         有符号十进制整数(与%d相同) 
+%u         无符号十进制整数 
+%o         八进制整数 
+%x(%X)     十六进制整数0f(0F)   e.g.   0x1234 
+%lx        long 
+%p         指针 
+%s         字符串
+%u         无符号
+
+- 运算符的优先级
+第1级是[],(),.,-> 等 ，*，+，-，&是第2级 同级别从左到右 
+
 
 - include
 

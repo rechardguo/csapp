@@ -6,4 +6,8 @@
 
 uint8_t mm[MM_LEN]; //physical address
 
+void printStack();
+void printRegister();
+void write64bits_dram(uint64_t,uint64_t);
+uint64_t read64bits_dram(uint64_t);
 #endif

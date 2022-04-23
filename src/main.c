@@ -24,28 +24,69 @@ int main()
     reg.rsi = 0x7ffffffedcd8;
     reg.rdi = 0x1;
     reg.rbp = 0x7ffffffedbf0;
-    reg.rsp = 0x7ffffffedbe0; // 栈顶的内存地址
+    reg.rsp = 0x7ffffffedbf0; // 栈顶的内存地址
     //rig 是代码段的指针
     reg.rip = (uint64_t)&program[0];
 
     //初始化内存
     //由于程序的执行是压栈执行
+    //reg.rbp = 0x7ffffffedbf0
     //reg.rsp = 0x7ffffffedbe0; // 栈顶的内存地址
     //通过 x/10 0x7ffffffedbe0 可以查到 0x7ffffffedbe0
-    mm[va2pa(0x7ffffffedbe8)]=2;
-    mm[va2pa(0x7ffffffedbec)]=5;
+    // (gdb) x/10 $rsp
+    // 0x7ffffffedbe0: -74544  32767   0       0
+    // 0x7ffffffedbf0: 134219328       0       -16638841       32767
+    // 0x7ffffffedc00: 1       0
+    write64bits_dram(va2pa(0x7ffffffedbf0), 0x134219328); // rbp
+    write64bits_dram(va2pa(0x7ffffffedbc0), 0x0);
+    write64bits_dram(va2pa(0x7ffffffedbe8), 0x0);
+    write64bits_dram(va2pa(0x7ffffffedbe4), 0x32767);
+    write64bits_dram(va2pa(0x7ffffffedbe0), 0x74544); // rsp
 
     printStack();
     printRegister();
 
-    for (size_t i = 0; i < INST_LEN; i++)
+    for (size_t i = 0; i < 1; i++)
     {
         //取值执行
-      //  instruction_cycle();
+        instruction_cycle();
+        printStack();
+        printRegister();
+
     }
     
-    //verify
-
+    int match=0;
+    //verify register
+    // rax            0x7      7
+    // rbx            0x0      0
+    // rcx            0x8000640        134219328
+    // rdx            0x2      2
+    // rsi            0x5      5
+    // rdi            0x2      2
+    // rbp            0x7ffffffedbf0   0x7ffffffedbf0
+    // rsp            0x7ffffffedbe0   0x7ffffffedbe0
+    if( reg.rax == 0x7 && reg.rbx == 0x0 && reg.rcx ==0x8000640 && reg.rdx==0x2 
+       &&reg.rsi == 0x5 && reg.rdi == 0x2 && reg.rbp == 0x7ffffffedbf0 && reg.rsp == 0x7ffffffedbe0 ){
+         printf(" register match \n");
+         match=1;
+      } 
+    match=0;
+    // 0x7ffffffedbe0: -74544  32767   2       5
+    // 0x7ffffffedbf0: 134219328       0       -16638841       32767
+    // 0x7ffffffedc00: 1       0
+    //verify memeory
+    if( read64bits_dram(va2pa(0x7ffffffedbf0)) ==  134219328 &&
+      read64bits_dram(va2pa(0x7ffffffedbc0)) ==  0 &&
+      read64bits_dram(va2pa(0x7ffffffedb08)) ==  0 &&
+      read64bits_dram(va2pa(0x7ffffffedb04)) ==  32767 &&
+      read64bits_dram(va2pa(0x7ffffffedbe0)) == 74544 ){
+         printf(" memory match \n");
+         match=1;
+     } 
+     if(match)
+        printf(" match \n");
+     else
+        printf(" not match \n");
    return 0;
 }
 

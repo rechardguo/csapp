@@ -1,5 +1,5 @@
 ./src/add
-./src/add.c
 ./src/add.o
+./src/add.s
 ./vscode/*
 program

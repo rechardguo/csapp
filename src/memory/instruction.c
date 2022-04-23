@@ -1,4 +1,5 @@
 #include "memory/instruction.h"
+#include "memory/dram.h"
 #include "cpu/register.h"
 #include "cpu/mmu.h"
 #include <stdio.h>
@@ -55,20 +56,33 @@ void instruction_cycle(){
     uint64_t src=decode_od(instr->src);
     uint64_t dst=decode_od(instr->dst);
     handler_t fun=handler_table[instr->op];
+    printf("\n\n%s\n\n" , instr->code);
     fun(src,dst);
 }
 
 void init_function_table(){
     //enum类型可以作为index
     handler_table[push_reg] = &push_reg_handler;
+    handler_table[mov_reg_reg] = &mov_reg_reg_handler;
   //  function_table[mov_imm_reg] = &mov_imm_reg_handler;
 }
 
 
 void push_reg_handler(uint64_t src,uint64_t dst){
-  
+    // src: reg
+    // dst: empty
+    reg.rsp = reg.rsp - 0x8;
+    write64bits_dram(
+        va2pa(reg.rsp),
+        *(uint64_t *)src
+    );
+    reg.rip = reg.rip + sizeof(inst_t);
+
 }
 
+void mov_reg_reg_handler(uint64_t src, uint64_t dst){
+
+}
 
 
 void mov_imm_reg_handler(uint64_t src,uint64_t dst){
@@ -90,11 +104,3 @@ void add_reg_reg_handler(uint64_t src,uint64_t dst){
     reg.rip=reg.rip+sizeof(inst_t);
 }
 
-void printStack(){
-    printf("todo printStack");
-}
-
-
-void printRegister(){
-    printf("todo printRegister");
-}

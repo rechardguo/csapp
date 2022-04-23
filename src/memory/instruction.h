@@ -54,9 +54,9 @@ typedef struct OD
 
 //指令类型
 typedef enum OP_TYPE{
-    mov_imm_reg,
     push_reg,
-    CALL,
+    mov_reg_reg,
+    sub_imm_reg,
     add_reg_reg
 }op_type_t;
 
@@ -70,12 +70,13 @@ typedef struct  INSTRUCTION{
 
 //指令周期
 //IF instruction fetch 取值
-void  instruction_cycle();
-
+void instruction_cycle();
 void init_function_table();
+
 void mov_imm_reg_handler(uint64_t , uint64_t);
 void push_reg_handler(uint64_t , uint64_t);
+void mov_reg_reg_handler(uint64_t , uint64_t);
 
-void printStack();
-void printRegister();
+
+
 #endif
