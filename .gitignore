@@ -1,4 +1,5 @@
 ./src/add
+./src/add2.txt
 ./src/add.o
 ./src/add.s
 ./vscode/*

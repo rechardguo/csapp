@@ -3,7 +3,10 @@ git clone https://github.com/yangminz/bcst_csapp.git
 
 下载后要切到某个commit
 git reset --hard <commit version>
-就可以切换到某个
+就可以切换到某个 version
+
+https://www.bilibili.com/video/BV17K4y1N7Q2?p=9
+git reset --hard 004c77a
 
 # target
 使用c语言编写一个汇编处理器来解析汇编指令
