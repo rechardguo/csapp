@@ -5,8 +5,10 @@ git clone https://github.com/yangminz/bcst_csapp.git
 git reset --hard <commit version>
 就可以切换到某个 version
 
+- 第一次版本重构的代码 
 https://www.bilibili.com/video/BV17K4y1N7Q2?p=9
 git reset --hard 004c77a
+对应的我的tag :1strefactory
 
 # target
 使用c语言编写一个汇编处理器来解析汇编指令
@@ -236,4 +238,10 @@ gdb main
 ## 代码不能提示错误，每次要gcc的时候才能提示，有没像java一样可以直接提示错误的
 【文件】-【首选项】-【设置】，然后输入Error Squiggles回车，调成Enable
 
+
+
+# github里添加ssh
+
+- 1. ssh-keygen -t rsa -b 4096 -C "sdragonguo@163.com"
+- 2. 将生产的文件
 

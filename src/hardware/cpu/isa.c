@@ -137,7 +137,9 @@ static uint64_t decode_operand(od_t *od)
 
 static void parse_instruction(const char *str, inst_t *inst, core_t *cr)
 {
-    
+    // str op
+    // inst_t e.g  $123, %rdi, -0x18(%rbp)
+
 }
 
 static void parse_operand(const char *str, od_t *od, core_t *cr)

@@ -12,7 +12,124 @@ uint64_t string2uint(const char *str)
 
 uint64_t string2uint_range(const char *str, int start, int end)
 {
-    return 0;
+    uint64_t strEnd = (end==-1) ? strlen(str) : end;
+    
+    uint64_t sign = 1;
+    int state = 0 ;
+    uint64_t uv= 0;
+    for( uint64_t i=0; i< strEnd ; ++i){
+       char ch = str[i];
+       if( state ==0 ){
+           if(ch == '-'){
+                sign = -1;
+                state = 1;
+            }else if( ch == '0'){
+                state = 2;
+            }else if( ch >= '0' && ch <='9' ){
+                state = 4;    
+            }else if( ch == ' '){
+                state = 0;    
+            }else{
+                goto fail;
+            }
+       }else if( state == 1){
+            if( ch >= '1' && ch<='9' ){
+                state = 4;    
+            }else if( ch == '0'){
+                state = 2;    
+            }else{
+                goto fail;
+            }
+       }else if( state == 2 ){
+            if(ch == 'x'){
+                state = 3;
+            }else if( ch >= '0' && ch<='9' ){
+                state = 4;    
+            }else{
+                goto fail;
+            }
+       }else if( state == 3){
+            if( (ch >= '0' && ch<='9') || (ch >= 'a' && ch<='f') ){
+                state = 5;    
+            }else{
+                goto fail;
+            }
+       }else if( state == 4){
+            if( ch >= '0' && ch<='9' ){
+                state = 4;    
+            }else if( ch == ' '){
+                state = 6;
+            }else{
+                goto fail;
+            }
+       }else if( state == 5){
+           if( (ch >= '0' && ch<='9') || (ch >= 'a' && ch<='f') ){
+               state = 5;
+           }else if( ch == ' '){
+               state = 6;
+           }else{
+               goto fail;
+           }
+       }else if( state == 6){
+            if( ch == ' '){
+                state =6;
+            }else{
+               goto fail;
+            }    
+       }else{
+           goto fail; 
+       }
+     // now we get state , sign , ch . action  
+        if(state==0){
+            // do nothing 
+        } else if(state==1){
+           
+        } else if(state==2){
+            // do nothing
+        } else if(state==3){
+            // hex do noting
+        } else if(state==4){
+            uint64_t pv = uv;
+            uv  =  uv*10 + ch - '0';
+            if(pv > uv){ //overflow check
+                printf("%s convert to uint has error: overflow \n", str);
+                goto fail;
+            }
+        } else if(state==5){
+            uint64_t pv = uv;
+            if( ch >= '0' && ch <='9' )
+                uv  = uv*16 + (ch - '0');
+            else // 'a' - 'f' 
+                uv  = uv*16 + (ch-'a'+10);
+                
+            if(pv > uv){ //overflow check
+                printf(" %s convert  to uint has error: overflow \n", str);
+                goto fail;
+            }
+        } else if(state==6){
+           // do nothing
+        }    
+    }   
+    
+   
+    if(sign==1) // positive value
+      return uv;
+
+    // negative value need check overflow
+    if(uv >> 63 == 1){
+         printf(" %s convert  to uint has error: overflow \n", str);
+         goto fail;
+    } 
+    // int64_t sv = *((int64_t*)uv);
+    // sv = -1*sv;
+    // return *(uint64_t*)sv;
+
+    int64_t sv = -1 * (*((int64_t *)&uv)); 
+    return  *(uint64_t *)&sv ;
+
+    fail:
+        printf("string %s can not be convereted to uint \n", str);
+        exit(0);
 }
 
 // convert uint32_t to its float
