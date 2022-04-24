@@ -55,9 +55,16 @@ typedef struct OD
 //指令类型
 typedef enum OP_TYPE{
     push_reg,
+    pop_reg,
     mov_reg_reg,
     sub_imm_reg,
-    add_reg_reg
+    mov_imm_mm,
+    mov_mm_reg,
+    add_reg_reg,
+    mov_reg_mm,
+    add,
+    ret,
+    call
 }op_type_t;
 
 //指令
@@ -75,8 +82,13 @@ void init_function_table();
 
 void mov_imm_reg_handler(uint64_t , uint64_t);
 void push_reg_handler(uint64_t , uint64_t);
+void sub_imm_reg_handler(uint64_t , uint64_t);
 void mov_reg_reg_handler(uint64_t , uint64_t);
-
-
-
+void mov_imm_mm_handler(uint64_t , uint64_t);
+void mov_mm_reg_handler(uint64_t , uint64_t);
+void mov_reg_mm_handler(uint64_t , uint64_t);
+void call_handler(uint64_t , uint64_t);
+void add_reg_reg_handler(uint64_t src, uint64_t dst);
+void pop_reg_handler(uint64_t src, uint64_t dst);
+void return_handler(uint64_t src, uint64_t dst);
 #endif

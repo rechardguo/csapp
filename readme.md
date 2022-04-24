@@ -86,6 +86,15 @@ Gdb调试过程：
 
 
 # c语言的基础知识
+- pointer
+ 
+ ```c
+int a=124;
+int *p = &a;
+// *p等同a
+// 使用指针赋值操作
+*p=567; 
+ ```
 
 - typedef的使用
 - union
@@ -213,7 +222,14 @@ gdb main
 为什么要写成 (uint64_t *)&reg.rbp
 这是因为  inst的reg1的寻址类型 imm ,地址1，地址2 。所以这里要写成地址
 
+
+# vscode 使用问题
+
 ## 按ctrl+鼠标左键单击不能跳转问题
 
 在vscode界面右侧，找到Extensions，在搜索框，输入C/C++,安装即可
+
+## 代码不能提示错误，每次要gcc的时候才能提示，有没像java一样可以直接提示错误的
+【文件】-【首选项】-【设置】，然后输入Error Squiggles回车，调成Enable
+
 

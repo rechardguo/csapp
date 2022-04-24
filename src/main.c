@@ -17,9 +17,9 @@ int main()
     //info r
     //程序加载到内存里
     //手工完成
-    reg.rax = 0x800065e;
+    reg.rax = 0x8000650;
     reg.rbx = 0x0;
-    reg.rcx = 0x80006b0;
+    reg.rcx = 0x8000650;
     reg.rdx = 0x7ffffffedce8;
     reg.rsi = 0x7ffffffedcd8;
     reg.rdi = 0x1;
@@ -35,18 +35,18 @@ int main()
     //通过 x/10 0x7ffffffedbe0 可以查到 0x7ffffffedbe0
     // (gdb) x/10 $rsp
     // 0x7ffffffedbe0: -74544  32767   0       0
-    // 0x7ffffffedbf0: 134219328       0       -16638841       32767
+    // 0x7ffffffedbf0: 134219344       0       -16638841       32767
     // 0x7ffffffedc00: 1       0
-    write64bits_dram(va2pa(0x7ffffffedbf0), 0x134219328); // rbp
+    write64bits_dram(va2pa(0x7ffffffedbf0), 0x134219344); // rbp
     write64bits_dram(va2pa(0x7ffffffedbc0), 0x0);
     write64bits_dram(va2pa(0x7ffffffedbe8), 0x0);
     write64bits_dram(va2pa(0x7ffffffedbe4), 0x32767);
-    write64bits_dram(va2pa(0x7ffffffedbe0), 0x74544); // rsp
+    write64bits_dram(va2pa(0x7ffffffedbe0), -0x74544); // rsp
 
     printStack();
     printRegister();
 
-    for (size_t i = 0; i < 1; i++)
+    for (size_t i = 0; i < 10; i++)
     {
         //取值执行
         instruction_cycle();
@@ -65,7 +65,7 @@ int main()
     // rdi            0x2      2
     // rbp            0x7ffffffedbf0   0x7ffffffedbf0
     // rsp            0x7ffffffedbe0   0x7ffffffedbe0
-    if( reg.rax == 0x7 && reg.rbx == 0x0 && reg.rcx ==0x8000640 && reg.rdx==0x2 
+    if( reg.rax == 0x7 && reg.rbx == 0x0 && reg.rcx ==0x8000650 && reg.rdx==0x2 
        &&reg.rsi == 0x5 && reg.rdi == 0x2 && reg.rbp == 0x7ffffffedbf0 && reg.rsp == 0x7ffffffedbe0 ){
          printf(" register match \n");
          match=1;
@@ -75,11 +75,11 @@ int main()
     // 0x7ffffffedbf0: 134219328       0       -16638841       32767
     // 0x7ffffffedc00: 1       0
     //verify memeory
-    if( read64bits_dram(va2pa(0x7ffffffedbf0)) ==  134219328 &&
-      read64bits_dram(va2pa(0x7ffffffedbc0)) ==  0 &&
-      read64bits_dram(va2pa(0x7ffffffedb08)) ==  0 &&
-      read64bits_dram(va2pa(0x7ffffffedb04)) ==  32767 &&
-      read64bits_dram(va2pa(0x7ffffffedbe0)) == 74544 ){
+    if( read64bits_dram(va2pa(0x7ffffffedbf0)) ==  0x134219344 &&
+      read64bits_dram(va2pa(0x7ffffffedbc0)) ==  0x0 &&
+      read64bits_dram(va2pa(0x7ffffffedb08)) ==  0x5 &&
+      read64bits_dram(va2pa(0x7ffffffedb04)) ==  0x0 &&
+      read64bits_dram(va2pa(0x7ffffffedbe0)) ==  0x2 ){
          printf(" memory match \n");
          match=1;
      } 

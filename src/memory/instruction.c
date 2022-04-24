@@ -22,9 +22,9 @@ static uint64_t decode_od(od_t od){
         if(od.type==MM_IMM){
             vaddr = od.imm;
         }else if (od.type==MM_REG) {
-            vaddr = *(od.reg1);
+            vaddr = *od.reg1;
         }else if (od.type==MM_IMM_REG) {
-            vaddr = od.imm+*(od.reg1);
+            vaddr = od.imm + *od.reg1;
         }else if (od.type==MM_REG1_REG2){
             vaddr = *(od.reg1)+*(od.reg2);
         }else if (od.type==MM_IMM_REG1_REG2){
@@ -55,16 +55,23 @@ void instruction_cycle(){
     //mm:paddr physical adress
     uint64_t src=decode_od(instr->src);
     uint64_t dst=decode_od(instr->dst);
-    handler_t fun=handler_table[instr->op];
+    handler_t handler=handler_table[instr->op];
     printf("\n\n%s\n\n" , instr->code);
-    fun(src,dst);
+    handler(src,dst);
 }
 
 void init_function_table(){
     //enum类型可以作为index
     handler_table[push_reg] = &push_reg_handler;
     handler_table[mov_reg_reg] = &mov_reg_reg_handler;
-  //  function_table[mov_imm_reg] = &mov_imm_reg_handler;
+    handler_table[sub_imm_reg] = &sub_imm_reg_handler;
+    handler_table[mov_imm_mm] = &mov_imm_mm_handler;
+    handler_table[mov_mm_reg] = &mov_mm_reg_handler;
+    handler_table[mov_reg_mm] = &mov_reg_mm_handler;
+
+    handler_table[add_reg_reg] = &add_reg_reg_handler;
+    handler_table[pop_reg] = &pop_reg_handler;
+    handler_table[ret] = &return_handler;
 }
 
 
@@ -81,14 +88,44 @@ void push_reg_handler(uint64_t src,uint64_t dst){
 }
 
 void mov_reg_reg_handler(uint64_t src, uint64_t dst){
+    //mov    %rsp,%rbp
+    //rsp ->rbp
+    *(uint64_t *)dst = *(uint64_t *)src;
+    reg.rip = reg.rip + sizeof(inst_t);
 
 }
 
+void sub_imm_reg_handler(uint64_t src, uint64_t dst){
+    //sub    $0x10,%rsp
+    *(uint64_t *)dst = *(uint64_t *)dst - src;
+    reg.rip = reg.rip + sizeof(inst_t);
+}
 
 void mov_imm_reg_handler(uint64_t src,uint64_t dst){
-   *(uint64_t*)dst = src;
-    //跳到下条指令
+   *(uint64_t *)dst = src;
     reg.rip=reg.rip+sizeof(inst_t);
+}
+
+void mov_imm_mm_handler(uint64_t src, uint64_t dst){
+   //movl   $0x2,-0x8(%rbp)     
+   write64bits_dram(dst,src);
+   reg.rip=reg.rip+sizeof(inst_t);
+}
+
+void  mov_mm_reg_handler(uint64_t src, uint64_t dst){
+    //mov    -0x8(%rbp),%rdx
+     *(uint64_t *)dst = read64bits_dram(src);
+    reg.rip=reg.rip+sizeof(inst_t); 
+}
+
+void call_handler(uint64_t src, uint64_t dst){
+     reg.rip = src;
+}
+
+void mov_reg_mm_handler(uint64_t src, uint64_t dst){
+    //mov    %rsi,-0x10(%rbp)
+    write64bits_dram(dst , *(uint64_t *)src); 
+    reg.rip=reg.rip+sizeof(inst_t); 
 }
 
 /**
@@ -102,5 +139,12 @@ void add_reg_reg_handler(uint64_t src,uint64_t dst){
     *(uint64_t*)dst = *(uint64_t*)src+*(uint64_t*)dst;
     //跳到下条指令
     reg.rip=reg.rip+sizeof(inst_t);
+}
+
+void pop_reg_handler(uint64_t src, uint64_t dst){
+
+}
+void return_handler(uint64_t src, uint64_t dst){
+
 }
 
