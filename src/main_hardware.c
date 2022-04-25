@@ -7,21 +7,24 @@
 #define MAX_NUM_INSTRUCTION_CYCLE 100
 
 static void TestAddFunctionCallAndComputation();
-static void TestStringConvertion();
+static void TestStr2unit();
+void TestParsingOperand();
 
 // symbols from isa and sram
 void print_register(core_t *cr);
 void print_stack(core_t *cr);
 
+
 int main()
 {
     //TestAddFunctionCallAndComputation();
-    TestStringConvertion();
+    //TestStr2unit();
+    TestParsingOperand();
     return 0;
 }
 
 // test string convert to uint
-static void TestStringConvertion(){
+static void TestStr2unit(){
     char* nums[16]  = {
          "0",
          "-0",

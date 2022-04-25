@@ -10,6 +10,13 @@ https://www.bilibili.com/video/BV17K4y1N7Q2?p=9
 git reset --hard 004c77a
 对应的我的tag :1strefactory
 
+- 关于operand的解析
+git reset --hard 34beeb4
+![anchor text](./addr_access.png "title")
+
+
+
+
 # target
 使用c语言编写一个汇编处理器来解析汇编指令
 例如一个简单的add c语言程序如下
@@ -92,6 +99,36 @@ Gdb调试过程：
 
 
 # c语言的基础知识
+
+- 方法调用
+- - 正常的做法是在fn.h里定义头，fn.c里实现，然后在main.c里include "fn.h"
+- - 还有一种是
+fn.c 和main.c 里都定义了头, fn.c里实现，main.c 里就可以直接用了
+e.g
+
+fn.c
+```c
+int add(int,int);
+int add(int i,int j){
+	int r= i+j;
+	return r;
+} 
+```
+main.c
+```c
+int add(int,int);
+int main(){	
+	add(1,2);
+	return 0;
+}
+```
+gcc fn.c main.c -o main 编译通过
+
+- static 
+> A static function in C is a function that has a scope that is limited to its object file. This means that the static function is only visible in its object file
+
+static 定义function的可见性只在当前文件里
+
 - pointer
  
  ```c
@@ -227,6 +264,24 @@ gdb main
 
 为什么要写成 (uint64_t *)&reg.rbp
 这是因为  inst的reg1的寻址类型 imm ,地址1，地址2 。所以这里要写成地址
+
+
+# 问题6
+> ./src/hardware/cpu/isa.c:234:20: error: comparison between pointer and integer [-Werror]
+
+代码如下
+```c
+typedef enum {
+    A,B
+}op_type_t;
+
+
+op_type_t type;
+if (type==NULL){
+    ...
+}
+```
+由于java代码转过来，不知道c的语法.op_type_t type 是不为NULL的，并且初始值是0
 
 
 # vscode 使用问题
