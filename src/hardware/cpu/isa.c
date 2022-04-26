@@ -147,6 +147,14 @@ static void parse_instruction(const char *str, inst_t *inst, core_t *cr)
 
 static void parse_operand(const char *str, od_t *od, core_t *cr)
 {
+
+    //初始化
+    od->type = EMPTY;
+    od->imm = 0;
+    od->scal = 0;
+    od->reg1 = 0;
+    od->reg2 = 0;
+
     //make sure str is not empty
     if(str == NULL || strlen(str) == 0){
         printf(" operand str must be not empty \n");
@@ -716,8 +724,8 @@ void TestParsingOperand()
     for (int i = 0; i < 11; ++ i)
     {
         od_t od;
+        //printf("od %p \n", &od);
         parse_operand(strs[i], &od, ac);
-
         printf("\n%s\n", strs[i]);
         printf("od enum type: %d\n", od.type);
         printf("od imm: %lx\n", od.imm);

@@ -283,6 +283,16 @@ if (type==NULL){
 ```
 由于java代码转过来，不知道c的语法.op_type_t type 是不为NULL的，并且初始值是0
 
+# 问题7
+
+```c
+ for (int i = 0; i < 11; ++ i)
+    {
+        od_t od; //为啥每次地址都一样
+        printf("od %p \n", &od);
+    }
+```
+
 
 # vscode 使用问题
 
