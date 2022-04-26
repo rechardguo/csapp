@@ -17,9 +17,9 @@ void print_stack(core_t *cr);
 
 int main()
 {
-    //TestAddFunctionCallAndComputation();
+    TestAddFunctionCallAndComputation();
     //TestStr2unit();
-    TestParsingOperand();
+    //TestParsingOperand();
     return 0;
 }
 

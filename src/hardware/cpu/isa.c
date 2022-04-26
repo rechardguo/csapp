@@ -70,7 +70,10 @@ static void parse_instruction(const char *str, inst_t *inst, core_t *cr);
 static void parse_operand(const char *str, od_t *od, core_t *cr);
 static uint64_t decode_operand(od_t *od);
 static uint64_t reflect_register(const char *str, core_t *cr);
+op_t str2op_t (const char* str);
+
 void TestParsingOperand();
+
 
 // interpret the operand
 static uint64_t decode_operand(od_t *od)
@@ -140,8 +143,82 @@ static uint64_t decode_operand(od_t *od)
 static void parse_instruction(const char *str, inst_t *inst, core_t *cr)
 {
     // str op
-    // inst_t e.g  $123, %rdi, -0x18(%rbp)
+    // inst_t e.g  mov -0x18(%rbp),%rdx
 
+    char op[60]={"/0"};
+    int op_len=0;
+    char od1[60]={"/0"};
+    int od1_len=0;
+    char od2[60]={"/0"};
+    int od2_len=0;
+
+    int state=0;
+    for(int i=0;i<strlen(str);++i){
+       char ch=str[i];
+       if(state == 0){
+        if(ch !=' ' ){
+           op[op_len] = ch;
+           op_len++;
+           state = 1; 
+           continue;
+        }
+       }else if(state == 1){
+           if(ch == ' '){
+               state = 2;
+               continue;
+           }else{
+               op[op_len] = ch;
+               op_len++;
+           }
+       }else if(state == 2 && ch!=' '){
+          if( ch ==',')
+             goto fail;
+          state=3;
+          od1[od1_len] = ch;
+          od1_len++;
+          continue;
+       }else if(state == 3){
+            if(ch == ','){
+              state = 6;
+              continue;
+            }else if(ch =='('){  
+                state = 4;
+            }else if(ch ==')')
+               goto fail; // ) must after (
+            od1[od1_len] = ch;
+            od1_len++;  
+            continue;       
+       }else if(state == 4){
+            if( ch ==',')
+             goto fail;
+            if(ch ==')')
+               state =5; 
+            od1[od1_len] = ch;
+            od1_len++;     
+            continue;    
+       }else if(state == 5){
+            if( ch ==','){
+               state = 6;
+               continue;
+            }
+       }else if(state == 6){
+            od2[od2_len] = ch;
+            od2_len++;  
+       }
+    }
+
+    // now we have op od1 od2
+    inst->op = str2op_t(op);
+    if( od1_len!=0 )
+        parse_operand(od1 , &inst->src ,cr);
+    if( od2_len!=0 )
+        parse_operand(od2 , &inst->dst ,cr);
+
+    return;
+
+    fail:
+     printf("%s can not parse \n" , str);
+     exit(0);
 
 }
 
@@ -301,6 +378,41 @@ static void parse_operand(const char *str, od_t *od, core_t *cr)
      exit(0);
     
 }
+
+
+
+const static struct 
+{
+    op_t op;
+    const char *str;
+}  OPERATOR_STR[] = {
+    {INST_MOV,"mov"},
+    {INST_MOV,"movq"},
+    {INST_MOV,"movl"},
+    {INST_PUSH,"push"},
+    {INST_POP,"pop"},
+    {INST_LEAVE,"leave"},
+    {INST_CALL,"call"},
+    {INST_CALL,"callq"},
+    {INST_RET,"ret"},
+    {INST_RET,"retq"},
+    {INST_ADD,"add"},
+    {INST_SUB,"sub"},
+    {INST_CMP,"cmp"},
+    {INST_JNE,"jne"},
+    {INST_JMP,"jmp"}
+};
+
+op_t str2op_t(const char *str)
+{
+     for (int j = 0;  j < sizeof (OPERATOR_STR) / sizeof (OPERATOR_STR[0]);  ++j){
+         if (!strcmp (str, OPERATOR_STR[j].str))
+             return OPERATOR_STR[j].op;    
+     }
+     printf("can not find opration for %s \n" , str);
+     exit(0);
+}
+
 
 // const static struct {
 //     od_type_t      type;
