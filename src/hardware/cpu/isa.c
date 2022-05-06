@@ -399,6 +399,7 @@ const static struct
     {INST_ADD,"add"},
     {INST_SUB,"sub"},
     {INST_CMP,"cmp"},
+    {INST_CMP,"cmpq"},
     {INST_JNE,"jne"},
     {INST_JMP,"jmp"}
 };
@@ -480,12 +481,9 @@ static handler_t handler_table[NUM_INSTRTYPE] = {
 
 // reset the condition flags
 // inline to reduce cost
-static inline void reset_cflags(core_t *cr)
+inline void reset_cflags(core_t *cr)
 {
-    cr->CF = 0;
-    cr->ZF = 0;
-    cr->SF = 0;
-    cr->OF = 0;
+    cr->cpu_flags.__cpu_flag_value=0;
 }
 
 // update the rip pointer to the next instruction sequentially
@@ -641,12 +639,17 @@ static void add_handler(od_t *src_od, od_t *dst_od, core_t *cr)
     {
         // src: register (value: int64_t bit map)
         // dst: register (value: int64_t bit map)
-        uint64_t val = *(uint64_t *)dst + *(uint64_t *)src;
+        uint64_t res = *(uint64_t *)dst + *(uint64_t *)src;
 
         // set condition flags
-
+        //进位是10进制的进位？
+        cr->cpu_flags.CF= 
+        //是否溢出的检测
+        cr->cpu_flags.OF= res < *(uint64_t *)dst;    //overflow flag
+        cr->cpu_flags.SF= (res>>63);    //sign flag,highest bit=0
+        cr->cpu_flags.ZF= (res==0) ;    //zero flag
         // update registers
-        *(uint64_t *)dst = val;
+        *(uint64_t *)dst = res;
         // signed and unsigned value follow the same addition. e.g.
         // 5 = 0000000000000101, 3 = 0000000000000011, -3 = 1111111111111101, 5 + (-3) = 0000000000000010
         next_rip(cr);
@@ -656,18 +659,36 @@ static void add_handler(od_t *src_od, od_t *dst_od, core_t *cr)
 
 static void sub_handler(od_t *src_od, od_t *dst_od, core_t *cr)
 {
+    //实现减法指令,e.g.
+    //sub    $0x10,%rsp
+    //uint64_t res = *(uint64_t *)dst_od->reg1 - src_od->imm;
+    uint64_t prev = *(uint64_t *)dst_od->reg1;
+    uint64_t prev2 = src_od->imm;
+    uint64_t res = prev + (~prev2+1); //等同减法
+    *(uint64_t *)dst_od->reg1 = res;
+  
+    //实现 conditon flag的设置
+    cr->cpu_flags.CF= 0;    //carry flag
+    //是否溢出的检测
+    cr->cpu_flags.OF= res < prev;    //overflow flag  a<a+b
+    cr->cpu_flags.SF= (res>>63);    //sign flag,highest bit=0
+    cr->cpu_flags.ZF= (res==0) ;    //zero flag
+    next_rip(cr);
 }
 
 static void cmp_handler(od_t *src_od, od_t *dst_od, core_t *cr)
 {
+    printf(" todo cmp \n");
 }
 
 static void jne_handler(od_t *src_od, od_t *dst_od, core_t *cr)
 {
+    printf(" todo jne \n");
 }
 
 static void jmp_handler(od_t *src_od, od_t *dst_od, core_t *cr)
 {
+    printf(" todo jmp \n");
 }
 
 
@@ -730,7 +751,9 @@ static uint64_t reflect_register(const char *str, core_t *cr)
 void instruction_cycle(core_t *cr)
 {
     // FETCH: get the instruction string by program counter
-    const char *inst_str = (const char *)cr->rip;
+    //const char *inst_str = (const char *)cr->rip;
+    char inst_str[MAX_INSTRUCTION_CHAR] ;
+    readinst_dram(va2pa(cr->rip ,cr),inst_str,cr);
     debug_printf(DEBUG_INSTRUCTIONCYCLE, "%lx    %s\n", cr->rip, inst_str);
 
     // DECODE: decode the run-time instruction operands
@@ -758,7 +781,7 @@ void print_register(core_t *cr)
         reg.rsi, reg.rdi, reg.rbp, reg.rsp);
     printf("rip = %16lx\n", cr->rip);
     printf("CF = %u\tZF = %u\tSF = %u\tOF = %u\n",
-        cr->CF, cr->ZF, cr->SF, cr->OF);
+        cr->cpu_flags.CF, cr->cpu_flags.ZF, cr->cpu_flags.SF, cr->cpu_flags.OF);
 }
 
 void print_stack(core_t *cr)
@@ -804,10 +827,7 @@ void TestParsingOperand()
     ac->reg.rbp = 0x7ffffffee110;
     ac->reg.rsp = 0x7ffffffee0f0;
 
-    ac->CF = 0;
-    ac->ZF = 0;
-    ac->SF = 0;
-    ac->OF = 0;
+    reset_cflags(ac);
 
     write64bits_dram(va2pa(0x7ffffffee110, ac), 0x0000000000000000, ac);    // rbp
     write64bits_dram(va2pa(0x7ffffffee108, ac), 0x0000000000000000, ac);

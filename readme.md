@@ -14,8 +14,14 @@ git reset --hard 004c77a
 git reset --hard 34beeb4
 ![anchor text](./addr_access.png "title")
 
+- 
+git reset --hard 7ec8dbe
 
+- 设计可执行与可链接的文本格式，.elf.txt。从磁盘上的文件中读取到内存
+git reset --hard d7f871c
 
+- 解析.elf.txt的节头表与符号表
+git reset --hard 7842d9c
 
 # target
 使用c语言编写一个汇编处理器来解析汇编指令
@@ -129,6 +135,23 @@ gcc fn.c main.c -o main 编译通过
 
 static 定义function的可见性只在当前文件里
 
+什么时候应该使用static？
+
+- inline
+告诉编译器进行优化使用的，https://blog.csdn.net/caoyaobin/article/details/43735361
+
+inline 不需要在头的地方定义,例如
+```h
+void reset_cflags(core_t *cr);
+```
+实现
+```c
+inline void reset_cflags(core_t *cr){
+    ...
+}
+```
+
+
 - pointer
  
  ```c
@@ -186,6 +209,19 @@ rax就是真个结构是64位，其中eax占了0-31, ax占了0-16，al占了0-7�
 
 
 - include
+
+
+- 数组的写法
+
+不正确 
+```c
+char [MAX_ELF_FILE_LINES][MAX_ELF_FILE_PERLINE_COUNT]code
+```
+
+正确
+```c
+char code[MAX_ELF_FILE_LINES][MAX_ELF_FILE_PERLINE_COUNT]
+```
 
 # vscode+gcc+win10环境配置
 
@@ -293,6 +329,10 @@ if (type==NULL){
     }
 ```
 
+## 问题8
+
+> unknown type name
+原因是在c里, struct a 引用了struct b. b必须定义在a前
 
 # vscode 使用问题
 
@@ -310,3 +350,8 @@ if (type==NULL){
 - 1. ssh-keygen -t rsa -b 4096 -C "sdragonguo@163.com"
 - 2. 将生产的文件
 
+
+# vocabulary
+
+1. dram  内存
+2. va 虚拟地址, 所有的寄存里的都

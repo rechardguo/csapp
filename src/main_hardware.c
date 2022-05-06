@@ -65,10 +65,7 @@ static void TestAddFunctionCallAndComputation()
     ac->reg.rbp = 0x7ffffffee110;
     ac->reg.rsp = 0x7ffffffee0f0;
 
-    ac->CF = 0;
-    ac->ZF = 0;
-    ac->SF = 0;
-    ac->OF = 0;
+    reset_cflags(ac);
 
     write64bits_dram(va2pa(0x7ffffffee110, ac), 0x0000000000000000, ac);    // rbp
     write64bits_dram(va2pa(0x7ffffffee108, ac), 0x0000000000000000, ac);
