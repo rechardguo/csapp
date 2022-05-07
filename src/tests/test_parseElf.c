@@ -1,19 +1,15 @@
-﻿#include <stdlib.h>
-#include <stdio.h>
-#include <headers/linker.h>
-#include <assert.h>
-
+﻿#include<stdio.h>
+#include<stdint.h>
+#include<stdlib.h>
+#include "headers/linker.h"
 
 int main()
 {
-    elf_t *elf = malloc(sizeof(elf_t));
-    int lineCount = parse_elf("./files/main.elf.txt",elf);
-    //为什么这样是50,为什么需要使用string2uint来转呢？
-    char lineOne = *(char*)(elf->code[0]);
-    printf("%d ,%s,%ld \n",lineCount,&lineOne,sizeof(int8_t *));
-   // assert(lineCount == lineOne);
-    for(int i=0;i<lineCount;i++){
-       printf("%s \n",elf->code[i]);
-    }
+   // elf_t *elf = malloc(sizeof(elf_t));
+    elf_t elf;
+    parse_elf("./files/exe/sum.elf.txt",&elf);
+    debug_print_elf(&elf);
+    printf("-----------------------\n");
+    debug_print_sht(&elf);
     return 0;
 }

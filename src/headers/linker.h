@@ -13,9 +13,9 @@
 typedef struct 
 {
     char sh_name[MAX_SH_NAME_LENGTH];    //.text  or  .data or .symbol
-    uint16_t sh_addr; // 0x0
-    uint16_t sh_offset; //lineoffset
-    uint16_t sh_size;  //line count start from lineoffset
+    uint64_t sh_addr; // 0x0
+    uint64_t sh_offset; //lineoffset
+    uint64_t sh_size;  //line count start from lineoffset
 }sh_entry_t;
 
 typedef enum
@@ -46,8 +46,8 @@ typedef struct linker
 typedef struct 
 {
     char code[MAX_ELF_FILE_LINES][MAX_PERLINE_LENGTH_IN_ELF_FILE];
-    uint16_t lineCount;
-    uint16_t sh_entry_count;
+    uint64_t lineCount;
+    uint64_t sh_entry_count;
     sh_entry_t *sht;
 
     uint64_t symt_count;
@@ -55,6 +55,12 @@ typedef struct
 
 }elf_t;
 
-int parse_elf(char *file, elf_t *elf);
+void debug_print_sht(elf_t *elf);
+void debug_print_elf(elf_t *elf);
 
+void parse_elf(char *filename, elf_t *elf);
+int read_elf(char *file, uint64_t addr);
+
+void process_sh(char *sh, sh_entry_t *sh_e);
+int process_entry(char *sh, char ***cols);
 #endif

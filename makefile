@@ -23,8 +23,8 @@ hardware:
 	$(CC) $(CFLAGS) -I$(SRC_DIR) $(COMMON) $(CPU) $(MEMORY) $(DISK) $(TEST_HARDWARE) -o $(BIN_HARDWARE)
 	./$(BIN_HARDWARE)
 
-.PHONY:elf
-elf:
+.PHONY:link
+link:
 	$(CC) $(CFLAGS) -I$(SRC_DIR) $(COMMON) $(LINKER) $(SRC_DIR)/tests/test_parseElf.c -o ./bin/test_parseElf
 	./bin/test_parseElf	
 

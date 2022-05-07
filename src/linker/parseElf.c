@@ -6,20 +6,43 @@
 #include <headers/common.h>
 #include <headers/linker.h>
 
-//从文件里加载
-int parse_elf(char *file, elf_t *elf){
-    FILE *fp;
+/**
+ * @brief 打印出elf sht
+ * 
+ * @param elf 
+ */
+void debug_print_sht(elf_t *elf){
+     int entryCount = elf->sh_entry_count;
+     for(int i=0;i<entryCount;i++){
+        sh_entry_t *sh_e = &elf->sht[i];
+        printf("sh_addr=%s\t sh_addr=%ld\t sh_offset=%ld\t sh_size=%ld\n",
+        sh_e->sh_name,sh_e->sh_addr,
+        sh_e->sh_offset,sh_e->sh_size);
+     }
+}
+
+void debug_print_elf(elf_t *elf){
+   for(int i=0;i<elf->lineCount;i++){
+       printf("%s \n",elf->code[i]);
+    }
+}
+
+//test_elf.c   
+//header/linker.h   read_elf(char *file)  global, undefied, .text
+//linker/parseElf.c
+int read_elf(char *file, uint64_t addr){
+   FILE *fp;
 
     fp = fopen(file,"r");
-    if( fp == NULL){
-        //TODO
+    assert( fp!=NULL );
+    if(fp == NULL){
         printf("file %s does not exist \n" , file);
-        exit(-1);
+        exit(0);
     }
 
     int lineCount = 0 ;
     char line[MAX_PERLINE_LENGTH_IN_ELF_FILE];
-    char *addr=(char*)(elf->code);
+    
     while( fgets(line, MAX_PERLINE_LENGTH_IN_ELF_FILE, fp) !=NULL ){ // NULL means eof or error, see man fgets
         // int len = strlen(line);
         // if( len==0||
@@ -75,5 +98,128 @@ int parse_elf(char *file, elf_t *elf){
     
     assert(string2uint((char *)addr) == lineCount);
     return lineCount; 
+ 
+}
+
+void process_sh(char *sh, sh_entry_t *sh_e){
+     // .text,0x0,6,10
+     //error: ‘cols’ is used uninitialized in this functio
+     //在process_entry里初始化
+     char **cols;
+     int col_num = process_entry(sh, &cols);
+     assert( col_num == 4);   
+     //sh_e->sh_name = cols[0];
+     //为什么这里要用strcpy
+     strcpy(sh_e->sh_name, cols[0]);
+     sh_e->sh_addr = string2uint(cols[1]);
+     sh_e->sh_offset = string2uint(cols[2]);
+     sh_e->sh_size = string2uint(cols[3]);
+}
+
+
+void process_symtab(char *sh, st_entry_t *st_e){
+     // sum,STB_GLOBAL,STT_FUNC,.text,0,22 
+     //在process_entry里初始化
+     char **cols;
+     int col_num = process_entry(sh, &cols);
+     assert( col_num == 6);   
+     strcpy(st_e->st_name, cols[0]);
+     //strcpy(st_e->bind , cols[1]);
+     //strcpy(st_e->type , cols[2]);
+     
+     strcpy(st_e->st_shndx , cols[3]);   
+     st_e->st_size = string2uint(cols[4]);
+     st_e->st_value = string2uint(cols[5]);
+}
+
+/**
+ * @brief 
+ * 
+ * @param sh 
+ * @param cols 
+ * @return int : total cols number 
+ */
+int process_entry(char *sh, char ***cols){
+    assert(sh!=NULL);
+    int len= strlen(sh);
+    int num_cols=1;
+    for (int i = 0; i < len; i++)
+    {
+        if(sh[i] == ','){
+            num_cols++;
+        }
+    }
+
+    //分配一个string数组吗？
+   // char **arr= malloc(num_cols*sizeof(char));
+    char **arr = malloc(num_cols * sizeof(char *));
+    *cols = arr;
+    
+    char col[32];
+    int colIndex = 0;
+    int colWidth = 0;
+    for (int i = 0; i < len; i++){
+      
+        //i==len-1 means last one
+        if(sh[i] == ',' || i==len-1 ){
+            
+            assert(colIndex < num_cols);
+            //直接这样写的话会变，col只是一个地址指针，所指向的内容会变化，所以需要再次进行拷贝】
+            //arr[colIndex] = col;
+            char *txt =malloc( (colWidth+1)*sizeof(char) );
+            for( int j=0;j<colWidth;j++){
+                 txt[j] = col[j];   
+            }
+            txt[colWidth] ='\0';
+            arr[colIndex] = txt;
+            colIndex++;
+            colWidth=0;
+        }else{
+            //不能超过32个字符
+            assert(colWidth<32);
+            col[colWidth] = sh[i];
+            colWidth++;
+        }
+    }
+
+    return colIndex;
+}
+
+//从文件里加载
+void parse_elf(char *filename, elf_t *elf){
+    uint64_t addr = (uint64_t)elf->code;
+    int lineCount = read_elf(filename,addr);
+    elf->lineCount = lineCount;
+
+    //process section header
+    uint64_t st_count= string2uint(elf->code[1]);
+    assert(st_count>0);
+    elf->sh_entry_count = st_count;
+
+    sh_entry_t *sh_e = malloc(st_count * sizeof(sh_entry_t));
+
+    elf->sht =sh_e;
+    sh_entry_t *sym_sh_e = NULL;  
+    for(int i=0;i<st_count;i++){
+        process_sh(elf->code[i+2],&sh_e[i]);
+        
+        if( strcmp(sh_e[i].sh_name,".symtab") == 0 ){
+            sym_sh_e=&sh_e[i];
+        }
+    }
+
+    assert( sym_sh_e!=NULL );
+    //process symtab
+    int sym_count  = sym_sh_e->sh_size;
+    st_entry_t *st_e = malloc( sym_count * sizeof(st_entry_t) );
+    elf->symt_count = sym_count;
+    elf->symt = st_e;
+
+    for(int i=0;i<sym_count;i++){
+       process_symtab(elf->code[sym_sh_e->sh_offset+i],&st_e[i]);
+    }
+    
+
 
 }
+
