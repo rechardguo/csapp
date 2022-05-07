@@ -13,5 +13,7 @@ int main()
     debug_print_sht(&elf);
     printf("-----------------------\n");
     debug_print_syt(&elf);
+
+    free_elf(&elf);
     return 0;
 }

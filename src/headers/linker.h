@@ -58,9 +58,13 @@ typedef struct
 void debug_print_sht(elf_t *elf);
 void debug_print_elf(elf_t *elf);
 void debug_print_syt(elf_t *elf);
+
 void parse_elf(char *filename, elf_t *elf);
 int read_elf(char *file, uint64_t addr);
 
 void process_sh(char *sh, sh_entry_t *sh_e);
 int process_entry(char *sh, char ***cols);
+
+void free_elf(elf_t *elf);
+void free_table_entry(char **ent, int n);
 #endif

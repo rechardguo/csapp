@@ -123,6 +123,8 @@ void process_sh(char *sh, sh_entry_t *sh_e){
      sh_e->sh_addr = string2uint(cols[1]);
      sh_e->sh_offset = string2uint(cols[2]);
      sh_e->sh_size = string2uint(cols[3]);
+
+     free_table_entry(cols, col_num);
 }
 
 
@@ -177,6 +179,8 @@ void process_symtab(char *sh, st_entry_t *st_e){
      strcpy(st_e->st_shndx , cols[3]);   
      st_e->st_size = string2uint(cols[4]);
      st_e->st_value = string2uint(cols[5]);
+
+     free_table_entry(cols, col_num);
 }
 
 /**
@@ -267,8 +271,22 @@ void parse_elf(char *filename, elf_t *elf){
     for(int i=0;i<sym_count;i++){
        process_symtab(elf->code[sym_sh_e->sh_offset+i],&st_e[i]);
     }
-    
-
 
 }
 
+void free_table_entry(char **ent, int n)
+{
+    for (int i = 0; i < n; ++ i)
+    {
+        free(ent[i]);
+    }
+    free(ent);
+}
+
+
+void free_elf(elf_t *elf)
+{
+    assert(elf != NULL);
+
+    free(elf->sht);
+}
