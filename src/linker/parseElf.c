@@ -21,6 +21,15 @@ void debug_print_sht(elf_t *elf){
      }
 }
 
+void debug_print_syt(elf_t *elf){
+     int entryCount = elf->symt_count;
+     for(int i=0;i<entryCount;i++){
+        st_entry_t *st_e = &elf->symt[i];
+        printf("st_name=%s\t bind=%d\t sh_offset=%d\t st_shndx=%s st_size=%ld\t st_value=%ld\t \n",
+        st_e->st_name,st_e->bind,st_e->type,st_e->st_shndx,
+        st_e->st_size,st_e->st_value);
+     }
+}
 void debug_print_elf(elf_t *elf){
    for(int i=0;i<elf->lineCount;i++){
        printf("%s \n",elf->code[i]);
@@ -127,6 +136,44 @@ void process_symtab(char *sh, st_entry_t *st_e){
      //strcpy(st_e->bind , cols[1]);
      //strcpy(st_e->type , cols[2]);
      
+      // select symbol bind
+    if (strcmp(cols[1], "STB_LOCAL") == 0)
+    {
+        st_e->bind = STB_LOCAL;
+    }
+    else if (strcmp(cols[1], "STB_GLOBAL") == 0)
+    {
+        st_e->bind = STB_GLOBAL;
+    }
+    else if (strcmp(cols[1], "STB_WEAK") == 0)
+    {
+        st_e->bind = STB_WEAK;
+    }
+    else
+    {
+        printf("symbol bind is neiter LOCAL, GLOBAL, nor WEAK\n");
+        exit(0);
+    }
+    
+    // select symbol type 
+    if (strcmp(cols[2], "STT_NOTYPE") == 0)
+    {
+        st_e->type = STT_NOTYPE;
+    }
+    else if (strcmp(cols[2], "STT_OBJECT") == 0)
+    {
+        st_e->type = STT_OBJECT;
+    }
+    else if (strcmp(cols[2], "STT_FUNC") == 0)
+    {
+        st_e->type = STT_FUNC;
+    }
+    else
+    {
+        printf("symbol type is neiter NOTYPE, OBJECT, nor FUNC\n");
+        exit(0);
+    }
+
      strcpy(st_e->st_shndx , cols[3]);   
      st_e->st_size = string2uint(cols[4]);
      st_e->st_value = string2uint(cols[5]);
@@ -158,11 +205,10 @@ int process_entry(char *sh, char ***cols){
     char col[32];
     int colIndex = 0;
     int colWidth = 0;
-    for (int i = 0; i < len; i++){
-      
-        //i==len-1 means last one
-        if(sh[i] == ',' || i==len-1 ){
-            
+    //strlen不包含\0,所以这里<=len
+    for (int i = 0; i <= len; i++){
+        //i==len 也就是到了\0和','一起处理即可
+        if(sh[i] == ',' || i==len ){
             assert(colIndex < num_cols);
             //直接这样写的话会变，col只是一个地址指针，所指向的内容会变化，所以需要再次进行拷贝】
             //arr[colIndex] = col;
@@ -174,6 +220,8 @@ int process_entry(char *sh, char ***cols){
             arr[colIndex] = txt;
             colIndex++;
             colWidth=0;
+            if(i==len-1)
+              printf("i==len-1 , %s \n" ,txt);
         }else{
             //不能超过32个字符
             assert(colWidth<32);
@@ -211,6 +259,7 @@ void parse_elf(char *filename, elf_t *elf){
     assert( sym_sh_e!=NULL );
     //process symtab
     int sym_count  = sym_sh_e->sh_size;
+    assert(sym_count>0);
     st_entry_t *st_e = malloc( sym_count * sizeof(st_entry_t) );
     elf->symt_count = sym_count;
     elf->symt = st_e;

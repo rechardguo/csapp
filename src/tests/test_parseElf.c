@@ -11,5 +11,7 @@ int main()
     debug_print_elf(&elf);
     printf("-----------------------\n");
     debug_print_sht(&elf);
+    printf("-----------------------\n");
+    debug_print_syt(&elf);
     return 0;
 }
