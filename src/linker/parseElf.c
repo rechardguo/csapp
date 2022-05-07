@@ -289,4 +289,5 @@ void free_elf(elf_t *elf)
     assert(elf != NULL);
 
     free(elf->sht);
+    free(elf->symt);
 }
