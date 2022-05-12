@@ -67,4 +67,6 @@ int process_entry(char *sh, char ***cols);
 
 void free_elf(elf_t *elf);
 void free_table_entry(char **ent, int n);
+
+void link_elf(elf_t src[],int src_size,elf_t *dst);
 #endif

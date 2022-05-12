@@ -15,7 +15,7 @@
 #define DEBUG_LOADER                0x80
 #define DEBUG_PARSEINST             0x100
 
-#define DEBUG_VERBOSE_SET           0x1
+#define DEBUG_VERBOSE_SET           0x41
 
 // do page walk
 #define DEBUG_ENABLE_PAGE_WALK      0
@@ -34,4 +34,6 @@ uint32_t uint2float(uint32_t u);
 uint64_t string2uint(const char *str);
 uint64_t string2uint_range(const char *str, int start, int end);
 
+// commonly shared variables
+#define MAX_INSTRUCTION_CHAR 64
 #endif

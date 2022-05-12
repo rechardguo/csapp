@@ -13,7 +13,7 @@ CPU =$(SRC_DIR)/hardware/cpu/mmu.c $(SRC_DIR)/hardware/cpu/isa.c
 MEMORY = $(SRC_DIR)/hardware/memory/dram.c
 
 # linker
-LINKER = $(SRC_DIR)/linker/parseElf.c
+LINKER = $(SRC_DIR)/linker/parseElf.c $(SRC_DIR)/linker/staticLinker.c
 
 # main
 TEST_HARDWARE = $(SRC_DIR)/tests/test_hardware.c

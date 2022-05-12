@@ -13,11 +13,15 @@
  */
 void debug_print_sht(elf_t *elf){
      int entryCount = elf->sh_entry_count;
+
      for(int i=0;i<entryCount;i++){
         sh_entry_t *sh_e = &elf->sht[i];
-        printf("sh_addr=%s\t sh_addr=%ld\t sh_offset=%ld\t sh_size=%ld\n",
-        sh_e->sh_name,sh_e->sh_addr,
-        sh_e->sh_offset,sh_e->sh_size);
+        debug_printf(DEBUG_LINKER, 
+        "sh_addr=%s\t sh_addr=%ld\t sh_offset=%ld\t sh_size=%ld\n",
+        sh_e->sh_name,
+        sh_e->sh_addr,
+        sh_e->sh_offset,
+        sh_e->sh_size);
      }
 }
 
@@ -25,9 +29,14 @@ void debug_print_syt(elf_t *elf){
      int entryCount = elf->symt_count;
      for(int i=0;i<entryCount;i++){
         st_entry_t *st_e = &elf->symt[i];
-        printf("st_name=%s\t bind=%d\t sh_offset=%d\t st_shndx=%s st_size=%ld\t st_value=%ld\t \n",
-        st_e->st_name,st_e->bind,st_e->type,st_e->st_shndx,
-        st_e->st_size,st_e->st_value);
+       debug_printf(DEBUG_LINKER, 
+       "st_name=%s\t bind=%d\t sh_offset=%d\t st_shndx=%s \t st_value=%ld\t st_size=%ld\n",
+        st_e->st_name,
+        st_e->bind,
+        st_e->type,
+        st_e->st_shndx,
+        st_e->st_value,
+        st_e->st_size);
      }
 }
 void debug_print_elf(elf_t *elf){
@@ -177,8 +186,8 @@ void process_symtab(char *sh, st_entry_t *st_e){
     }
 
      strcpy(st_e->st_shndx , cols[3]);   
-     st_e->st_size = string2uint(cols[4]);
-     st_e->st_value = string2uint(cols[5]);
+     st_e->st_value = string2uint(cols[4]);
+     st_e->st_size = string2uint(cols[5]);
 
      free_table_entry(cols, col_num);
 }
@@ -269,9 +278,11 @@ void parse_elf(char *filename, elf_t *elf){
     elf->symt = st_e;
 
     for(int i=0;i<sym_count;i++){
-       process_symtab(elf->code[sym_sh_e->sh_offset+i],&st_e[i]);
+       process_symtab(elf->code[sym_sh_e->sh_offset+i],&elf->symt[i]);
     }
 
+    //debug_print_sht(elf);
+    //debug_print_syt(elf);
 }
 
 void free_table_entry(char **ent, int n)
