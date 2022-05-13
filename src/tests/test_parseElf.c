@@ -11,6 +11,8 @@ int main()
     printf("-----------------------------\n");
     parse_elf("./files/exe/main.elf.txt",&src[1]);
     
+    debug_print_sht(&src[0]);
+    debug_print_sht(&src[1]);
     elf_t dst;
     link_elf(src,2,&dst); 
 

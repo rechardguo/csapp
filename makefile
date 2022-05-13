@@ -3,6 +3,7 @@ CFLAGS = -Wall -g -O2 -Werror -std=gnu99 -Wno-unused-function
 
 BIN_HARDWARE = ./bin/test_hardware
 
+
 SRC_DIR = ./src
 
 # debug

@@ -23,6 +23,12 @@ git reset --hard d7f871c
 - 解析.elf.txt的节头表与符号表
 git reset --hard 7842d9c
 
+- 静态链接的第一步：符号解析，设计内部的符号表作为维护符号关系的数据结构
+git reset --hard 32dff69
+
+- 静态链接的第二步：将ELF的Section合并为EOF的Segment，并且计算Segment的运行时起始地址
+git reset --hard d2c4f61
+
 # target
 使用c语言编写一个汇编处理器来解析汇编指令
 例如一个简单的add c语言程序如下
@@ -223,6 +229,43 @@ char [MAX_ELF_FILE_LINES][MAX_ELF_FILE_PERLINE_COUNT]code
 char code[MAX_ELF_FILE_LINES][MAX_ELF_FILE_PERLINE_COUNT]
 ```
 
+- 数组的用法
+**以下的问题需要注意，这个发了很长时间debug**
+```c
+    char arr3[10];
+    for(int i=0;i<10;i++){
+          arr3[i]=(i+1);
+    }
+
+    for(int i=0;i<10;i++){
+          char ch = arr3[i];
+          // 打印出来的&ch是永远不变的
+          printf("%d ,%p \n",ch,&ch);
+          // 要打印出char指针，需要使用  
+          printf("%d ,%p \n",ch,&arr3[i]);
+    }
+```
+相当于
+```c
+char arr3[10];
+    for(int i=0;i<10;i++){
+          arr3[i]=(i+1);
+    }
+    char ch ; 
+    for(int i=0;i<10;i++){
+          ch = arr3[i];
+          char *chp = &ch;
+          //&ch 永远不会变的
+          printf("%p \n",chp);
+    }
+```
+
+
+
+
+- malloc
+什么时候需要使用malloc
+
 # vscode+gcc+win10环境配置
 
 参考 https://blog.csdn.net/weixin_40877998/article/details/114713368
@@ -349,6 +392,11 @@ if (type==NULL){
 
 - 1. ssh-keygen -t rsa -b 4096 -C "sdragonguo@163.com"
 - 2. 将生产的文件
+
+# git
+
+- git reset --hard <tagname>
+
 
 
 # vocabulary

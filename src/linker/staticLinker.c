@@ -203,16 +203,16 @@ static void compute_section_header(smap_t *smapArr,int smapArrCount, elf_t srcs[
 
     //process elf.sht.rodata
     if(rodataCount>0){
-      sh_entry_t *she = &(dst->sht[sht_index]);
+       sh_entry_t *she = &(dst->sht[sht_index]);
         process_sh_entry(she, dst, sht_index,
-                   ".rodataCount", rodata_runtime_addr,session_offset,rodataCount);
+                   ".rodata", rodata_runtime_addr,session_offset,rodataCount);
        sht_index++;   
        session_offset += she->sh_size;
     }
 
     //process elf.sht.data
     if(dataCount>0){
-     sh_entry_t *she = &(dst->sht[sht_index]);
+        sh_entry_t *she = &(dst->sht[sht_index]);
         process_sh_entry(she, dst, sht_index,
                    ".data", data_runtime_addr,session_offset,dataCount);
        sht_index++;   
@@ -249,7 +249,7 @@ static void process_symbol(smap_t *smapArr,int *smapArrCount, elf_t *srcs, int s
     //int symmap_index=0;
     for( int i=0;i<srcs_size;i++ ){
         elf_t *src = &srcs[i];
-        int  sym_count =src->symt_count;
+        int  sym_count = src->symt_count;
         st_entry_t *ste;
         // symbol process
         for(int j=0;j<sym_count;j++){
@@ -335,40 +335,87 @@ static void process_symbol(smap_t *smapArr,int *smapArrCount, elf_t *srcs, int s
 
 }
 
+static void do_merge_section(elf_t *dst, smap_t *smap_table, int smap_count,char *section_name){
+    sh_entry_t *dst_sh_e = get_sh(dst->sht,dst->sh_entry_count,section_name);
+
+    //some sh may not exist
+    if(dst_sh_e==NULL) return;
+
+    assert(strcmp(dst_sh_e->sh_name, section_name)==0);
+    int dst_offset =dst_sh_e->sh_offset;
+
+    int atLeaseOneSection=0;
+    for(int i=0;i<smap_count;i++){
+        smap_t *smap = &smap_table[i];
+        st_entry_t *sym = smap->src;
+        
+        if( strcmp(sym->st_shndx,section_name) == 0 ){
+            sh_entry_t *src_sh_e = get_sh(smap->src_elf->sht,smap->src_elf->sh_entry_count,section_name);
+            if(src_sh_e == NULL)
+              continue;
+            int src_offset = src_sh_e->sh_offset;
+            for(int j=0;j< sym->st_size;j++){
+                
+                strcpy(dst->code[dst_offset] ,smap->src_elf->code[src_offset+ sym->st_value]);
+                
+                dst_offset++;
+                src_offset++;
+            }
+            atLeaseOneSection=1;
+        }
+
+    }
+    assert( atLeaseOneSection==1 );
+}
+
 static void merge_section(elf_t *srcs, int num_srcs, elf_t *dst,
     smap_t *smap_table, int smap_count){
 
-    st_entry_t * ste = malloc(sizeof(st_entry_t) * dst->symt_count);    
-    dst->symt = ste;
+    do_merge_section(dst,smap_table,smap_count,".text");
+    do_merge_section(dst,smap_table,smap_count,".rodata");
+    do_merge_section(dst,smap_table,smap_count,".data");
     
-    //.txt
-    sh_entry_t *dst_txt_sh_e = get_sh(dst->sht,dst->sh_entry_count,".text");
-    assert(strcmp(dst_txt_sh_e->sh_name, ".text")==0);
-    int dst_txt_offset =dst_txt_sh_e->sh_offset;
-
-    for(int i=0;i<smap_count;i++){
-        smap_t smap = smap_table[i];
-        st_entry_t *sym = smap.src;
-        
-        if( strcmp(sym->st_shndx,".text") == 0 ){
-            sh_entry_t *src_txt_sh_e = get_sh(smap.src_elf->sht,smap.src_elf->sh_entry_count,".text");
-            int src_txt_offset = src_txt_sh_e->sh_offset;
-            int src_size = src_txt_sh_e->sh_size;
-
-            for(int j=0;j<src_size;j++){
-                strcpy(dst->code[dst_txt_offset] ,smap.src_elf->code[src_txt_offset]);
-                dst_txt_offset++;
-                src_txt_offset++;
-            }
+    //compute_symtab
+    sh_entry_t *sym_sh = get_sh(dst->sht,dst->sh_entry_count,".symtab");
+    int symtab_offset = sym_sh->sh_offset;
+    st_entry_t *ste = malloc(smap_count * sizeof(st_entry_t));
+    dst->symt = ste;
+    int symtab_data_offset = 0;
+    int symtab_rodata_offset = 0;
+    int symtab_text_offset = 0;
+    for (int i = 0; i < smap_count; ++ i)
+    {
+        st_entry_t *ste = smap_table[i].src;
+        dst->symt[i].bind=ste->bind;
+        strcpy(dst->symt[i].st_name ,ste->st_name);
+        strcpy(dst->symt[i].st_shndx ,ste->st_shndx);
+        dst->symt[i].type =ste->type;
+        dst->symt[i].st_size = ste->st_size;
+        if( strcmp(dst->symt[i].st_shndx,".data")==0 ){
+            dst->symt[i].st_value = symtab_data_offset;
+            symtab_data_offset += ste->st_size;
         }
-        
+        if( strcmp(dst->symt[i].st_shndx,".text")==0 ){
+            dst->symt[i].st_value = symtab_text_offset;
+            symtab_text_offset += ste->st_size;
+        }
+        if( strcmp(dst->symt[i].st_shndx,".rodata")==0 ){
+            dst->symt[i].st_value = symtab_rodata_offset;
+            symtab_rodata_offset += ste->st_size;
+        }
+
+        sprintf(dst->code[symtab_offset],
+        "%s,%d,%d,%s,%ld,%ld",
+        dst->symt[i].st_name,
+        dst->symt[i].bind,
+        dst->symt[i].type,
+        dst->symt[i].st_shndx,
+        dst->symt[i].st_value,
+        dst->symt[i].st_size);
+        symtab_offset++;
     }
 
-    
     debug_print_elf(dst);
-    //.rodata
-    //.data
-    //.symtab    
 }
 
 
@@ -388,8 +435,8 @@ void link_elf(elf_t srcs[],int srcs_size,elf_t *dst){
     //.txt
     //.rodata
     //.data
-    //.symtab   
     merge_section(srcs,srcs_size,dst,smapArr,smapArr_count);
    
+    
 
 }
