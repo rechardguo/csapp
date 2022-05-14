@@ -385,6 +385,17 @@ if (type==NULL){
 > unknown type name
 原因是在c里, struct a 引用了struct b. b必须定义在a前
 
+## 问题9 
+**未解决**
+为了能够断点debug，没有按up作者使用python建立cmd.py。
+而是使用.vscode里建立 launch.json 和task.json
+
+launch.json里需要配置
+```json
+"cwd": "${workspaceFolder}/csapp"
+```
+才能elf文件解析成功,否者就是报错
+
 # vscode 使用问题
 
 ## 按ctrl+鼠标左键单击不能跳转问题
