@@ -29,6 +29,14 @@ git reset --hard 32dff69
 - 静态链接的第二步：将ELF的Section合并为EOF的Segment，并且计算Segment的运行时起始地址
 git reset --hard d2c4f61
 
+- 静态链接的第三步：将ELF文件中的符号引用重定位到它们在EOF中的符号
+git reset --hard d0be385
+
+- 完成静态链接，计算符号的运行时地址。动态链接：GOT与PLT
+
+git reset --hard febae2c 
+
+
 # target
 使用c语言编写一个汇编处理器来解析汇编指令
 例如一个简单的add c语言程序如下

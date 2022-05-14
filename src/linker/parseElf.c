@@ -210,8 +210,7 @@ int process_entry(char *sh, char ***cols){
         }
     }
 
-    //分配一个string数组吗？
-   // char **arr= malloc(num_cols*sizeof(char));
+    //分配指针数组
     char **arr = malloc(num_cols * sizeof(char *));
     *cols = arr;
     
@@ -281,8 +280,6 @@ void parse_elf(char *filename, elf_t *elf){
        process_symtab(elf->code[sym_sh_e->sh_offset+i],&elf->symt[i]);
     }
 
-    //debug_print_sht(elf);
-    //debug_print_syt(elf);
 }
 
 void free_table_entry(char **ent, int n)

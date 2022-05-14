@@ -418,6 +418,14 @@ static void merge_section(elf_t *srcs, int num_srcs, elf_t *dst,
     debug_print_elf(dst);
 }
 
+static void free_smapArr(smap_t *smap ,int smapArr_count){
+    for (size_t i = 0; i < smapArr_count; i++)
+    {
+       free(&smap[i]);
+    }
+    
+}
+
 
 void link_elf(elf_t srcs[],int srcs_size,elf_t *dst){
 
@@ -437,6 +445,6 @@ void link_elf(elf_t srcs[],int srcs_size,elf_t *dst){
     //.data
     merge_section(srcs,srcs_size,dst,smapArr,smapArr_count);
    
-    
+    //free_smapArr(smapArr,smapArr_count);
 
 }
