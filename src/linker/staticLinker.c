@@ -5,16 +5,28 @@
 #include <assert.h>
 #include <headers/common.h>
 #include <headers/linker.h>
+#include <headers/instruction.h>
 #define MAX_SYMBOL_MAP_LENGTH 64
 // internal mapping between source and destination symbol entries
 typedef struct
 {
     elf_t       *src_elf;   // src elf file
     st_entry_t  *src;   // src symbol
-    st_entry_t  *dst;   // dst symbol: used for relocation - find the function referencing the undefined symbol
+    //u_int64_t    dst_code_offset ; //src text or data or rodata merge to dst text data rodata, this value keep offset in dst code
+    //st_entry_t  *dst;   // dst symbol: used for relocation - find the function referencing the undefined symbol
     // TODO:
     // relocation entry (referencing section, referenced symbol) converted to (referencing symbol, referenced symbol) entry
 } smap_t;
+
+
+typedef struct 
+{
+  elf_t       *src_elf;
+  uint64_t    dst_txt_offset ;
+  uint64_t    dst_data_offset ;
+    
+} rel_dst_map_t;
+
 
 // static st_bind_t symbol_bind( int bind ){
 //     switch (bind)
@@ -122,6 +134,17 @@ static void symbol_resolution(smap_t *smap, elf_t *elf ,st_entry_t *sym){
 static sh_entry_t* get_sh(sh_entry_t *addr,int sh_count ,char *sh_name){
     for(int i=0 ;i<sh_count;i++){
         if( strcmp(addr[i].sh_name,sh_name) ==0 ){
+                return &addr[i];
+        }
+    }
+    return NULL;
+}
+
+
+
+static st_entry_t* get_st(st_entry_t *addr,int st_count ,char *st_name){
+    for(int i=0 ;i<st_count;i++){
+        if( strcmp(addr[i].st_name,st_name) ==0 ){
                 return &addr[i];
         }
     }
@@ -335,7 +358,8 @@ static void process_symbol(smap_t *smapArr,int *smapArrCount, elf_t *srcs, int s
 
 }
 
-static void do_merge_section(elf_t *dst, smap_t *smap_table, int smap_count,char *section_name){
+static void do_merge_section(elf_t *dst, smap_t *smap_table, int smap_count,char *section_name,
+                        rel_dst_map_t *rel_dst_map,int num_srcs){
     sh_entry_t *dst_sh_e = get_sh(dst->sht,dst->sh_entry_count,section_name);
 
     //some sh may not exist
@@ -348,7 +372,6 @@ static void do_merge_section(elf_t *dst, smap_t *smap_table, int smap_count,char
     for(int i=0;i<smap_count;i++){
         smap_t *smap = &smap_table[i];
         st_entry_t *sym = smap->src;
-        
         if( strcmp(sym->st_shndx,section_name) == 0 ){
             sh_entry_t *src_sh_e = get_sh(smap->src_elf->sht,smap->src_elf->sh_entry_count,section_name);
             if(src_sh_e == NULL)
@@ -357,23 +380,41 @@ static void do_merge_section(elf_t *dst, smap_t *smap_table, int smap_count,char
             for(int j=0;j< sym->st_size;j++){
                 
                 strcpy(dst->code[dst_offset] ,smap->src_elf->code[src_offset+ sym->st_value]);
-                
+
                 dst_offset++;
                 src_offset++;
             }
             atLeaseOneSection=1;
+            for (int i = 0; i < num_srcs; i++)
+            {
+                if(rel_dst_map[i].src_elf == smap->src_elf ){
+                     // dst_offset - sym->st_size must be not zero
+                     // if it is zero ,this is start offset
+                      
+                    if( strcmp(section_name,".text")==0 && rel_dst_map[i].dst_txt_offset==0){
+                        rel_dst_map[i].dst_txt_offset = dst_offset - sym->st_size;
+                      }else if( strcmp(section_name,".data")==0 && rel_dst_map[i].dst_data_offset==0){
+                        rel_dst_map[i].dst_data_offset = dst_offset -sym->st_size;
+                      }
+                }
+            }
+            
+        
         }
 
     }
     assert( atLeaseOneSection==1 );
+
+  
+
 }
 
 static void merge_section(elf_t *srcs, int num_srcs, elf_t *dst,
-    smap_t *smap_table, int smap_count){
-
-    do_merge_section(dst,smap_table,smap_count,".text");
-    do_merge_section(dst,smap_table,smap_count,".rodata");
-    do_merge_section(dst,smap_table,smap_count,".data");
+    smap_t *smap_table, int smap_count, rel_dst_map_t *rel_dst_map){
+        
+    do_merge_section(dst,smap_table,smap_count,".text",rel_dst_map,num_srcs);
+    do_merge_section(dst,smap_table,smap_count,".rodata",rel_dst_map,num_srcs);
+    do_merge_section(dst,smap_table,smap_count,".data",rel_dst_map,num_srcs);
     
     //compute_symtab
     sh_entry_t *sym_sh = get_sh(dst->sht,dst->sh_entry_count,".symtab");
@@ -427,6 +468,134 @@ static void free_smapArr(smap_t *smap ,int smapArr_count){
 }
 
 
+static uint64_t get_symbol_runtime_address(elf_t *dst, st_entry_t *sym)
+{
+    // get the run-time address of symbol
+    uint64_t base = 0x00400000;
+
+    uint64_t text_base = base;
+    uint64_t rodata_base = base;
+    uint64_t data_base = base;
+
+    int inst_size = sizeof(inst_t);
+    int data_size = sizeof(uint64_t);
+
+    // must visit in .text, .rodata, .data order
+    sh_entry_t *sht = dst->sht;
+    for (int i = 0; i < dst->sh_entry_count; ++ i)
+    {
+        if (strcmp(sht[i].sh_name, ".text") == 0)
+        {
+            rodata_base = text_base + sht[i].sh_size * inst_size;
+            data_base = rodata_base;
+        }
+        else if (strcmp(sht[i].sh_name, ".rodata") == 0)
+        {
+            data_base = rodata_base + sht[i].sh_size * data_size;
+        }
+    }
+    
+    // check this symbol's section
+    if (strcmp(sym->st_shndx, ".text") == 0)
+    {
+        return text_base + inst_size * sym->st_value;
+    }
+    else if (strcmp(sym->st_shndx, ".rodata") == 0)
+    {
+        return rodata_base + data_size * sym->st_value;
+    }
+    else if (strcmp(sym->st_shndx, ".data") == 0)
+    {
+        return data_base + data_size * sym->st_value;
+    }
+
+    return 0xFFFFFFFFFFFFFFFF;
+}
+
+
+static void write_relocation(char *dst, uint64_t val)
+{    
+    char temp[20];
+    sprintf(temp, "0x%016lx", val);
+    for (int i = 0; i < 18; ++ i)
+    {
+        dst[i] = temp[i];
+    }
+}
+
+static void R_X86_64_32_handler(char *line,rl_entry_t *srcrl,
+                     elf_t *dst,st_entry_t *sym_referenced)
+{
+    //printf("%s \n",line);
+    uint64_t sym_address = get_symbol_runtime_address(dst, sym_referenced);
+    char *s = &line[srcrl->r_col];
+    write_relocation(s, sym_address);
+    //printf("%s \n",line);
+}
+
+static void R_X86_64_PC32_handler(char *line, rl_entry_t *srcrl,
+                     elf_t *dst,st_entry_t *sym_referenced)
+{
+    //printf("%s \n",line);
+    uint64_t sym_address = get_symbol_runtime_address(dst, sym_referenced);
+    uint64_t rip_value = 0x00400000 + (srcrl->r_row + 1) * sizeof(inst_t);
+    char *s = &line[srcrl->r_col];
+    write_relocation(s, sym_address - rip_value);
+    //printf("%s \n",line);
+}
+
+
+static rel_dst_map_t *find_dst_offset(elf_t *src,rel_dst_map_t *rel_dst_map,int srcs_size ){
+    for (size_t i = 0; i < srcs_size; i++)
+    {
+        if( src == rel_dst_map[i].src_elf){
+            return &rel_dst_map[i];
+        }
+    }
+    printf("can not find offset in dst code for elf file");
+    exit(0);
+}
+
+static void process_relocation(smap_t *smap ,int smapArr_count,elf_t *srcs, int srcs_size,elf_t *dst,rel_dst_map_t *rel_dst_map){
+
+    for(int i=0;i<srcs_size;i++){
+       elf_t *elf = &srcs[i];
+
+       //process .text symbol relocation
+       int reltext_count = elf->reltext_count;
+       if(reltext_count>0){
+            for(int j=0;j<reltext_count;j++){
+                //src rel.text
+                rl_entry_t *srcrl= &elf->reltext[j];
+                st_entry_t *srcsym = &elf->symt[srcrl->sym];
+                // printf("%s\n",srcsym->st_name);
+                st_entry_t *dstsym = get_st(dst->symt,dst->symt_count,srcsym->st_name);
+                //dst_text_sh
+                // printf("%s\n",dstsym->st_shndx);
+                // sh_entry_t *dst_txt_she = get_sh(dst->sht, dst->sh_entry_count,dstsym->st_shndx);
+ 
+                rel_dst_map_t *relindst = find_dst_offset(elf,rel_dst_map,srcs_size);    
+                int offset = relindst->dst_txt_offset + srcrl->r_row;
+                //printf("%s,%ld,%ld \n", srcsym->st_name, relindst->dst_txt_offset, srcrl->r_row);
+                if( srcrl->type == R_X86_64_PC32){ //relative
+                    R_X86_64_PC32_handler( (char*)&(dst->code[offset]),srcrl,dst,dstsym);
+                }else if(srcrl->type == R_X86_64_32 ){ //abs
+                    R_X86_64_32_handler( (char*)&(dst->code[offset]),srcrl,dst,dstsym);
+                }else if( srcrl->type == R_X86_64_PLT32){
+                    R_X86_64_PC32_handler( (char*)&(dst->code[offset]),srcrl,dst,dstsym);
+                }
+
+            }
+       }
+       //porcess .data symbol relocation
+
+
+    }                              
+
+
+}
+
+
 void link_elf(elf_t srcs[],int srcs_size,elf_t *dst){
 
     assert(srcs_size>0);
@@ -440,11 +609,21 @@ void link_elf(elf_t srcs[],int srcs_size,elf_t *dst){
     //.sht
     compute_section_header(smapArr,smapArr_count,srcs,srcs_size,dst);    
 
+
+    rel_dst_map_t rel_dst_map[srcs_size];
+    for (int i = 0; i < srcs_size; i++)
+    {
+        rel_dst_map[i].src_elf = &srcs[i];
+        rel_dst_map[i].dst_data_offset =0;
+        rel_dst_map[i].dst_txt_offset =0;
+    }
+
     //.txt
     //.rodata
     //.data
-    merge_section(srcs,srcs_size,dst,smapArr,smapArr_count);
-   
+    merge_section(srcs,srcs_size,dst,smapArr,smapArr_count,rel_dst_map);
+
+    process_relocation(smapArr,smapArr_count,srcs,srcs_size,dst,rel_dst_map);
     //free_smapArr(smapArr,smapArr_count);
 
 }

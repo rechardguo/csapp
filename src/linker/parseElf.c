@@ -245,6 +245,25 @@ int process_entry(char *sh, char ***cols){
     return colIndex;
 }
 
+void static process_relocation(char *line ,rl_entry_t *rl){
+    char **cols;
+    int cols_size = process_entry(line,&cols);
+    assert( cols_size == 5 );
+    
+    rl->r_row = string2uint(cols[0]);
+    rl->r_col = string2uint(cols[1]);
+    
+    if(strcmp(cols[2] , "R_X86_64_32")==0){
+        rl->type =  R_X86_64_32;
+    }else if(strcmp(cols[2] , "R_X86_64_PC32")==0){
+        rl->type =  R_X86_64_PC32;
+    }else if(strcmp(cols[2] , "R_X86_64_PLT32")==0){
+        rl->type =  R_X86_64_PLT32;
+    }
+    rl->sym = string2uint(cols[3]);
+    rl->r_addend = string2uint(cols[4]);
+}
+
 //从文件里加载
 void parse_elf(char *filename, elf_t *elf){
     uint64_t addr = (uint64_t)elf->code;
@@ -259,27 +278,59 @@ void parse_elf(char *filename, elf_t *elf){
     sh_entry_t *sh_e = malloc(st_count * sizeof(sh_entry_t));
 
     elf->sht =sh_e;
-    sh_entry_t *sym_sh_e = NULL;  
+    sh_entry_t *sym_she_symtab = NULL;
+    sh_entry_t *sym_she_reltxt = NULL;  
+    sh_entry_t *sym_she_reldata = NULL;  
     for(int i=0;i<st_count;i++){
         process_sh(elf->code[i+2],&sh_e[i]);
         
         if( strcmp(sh_e[i].sh_name,".symtab") == 0 ){
-            sym_sh_e=&sh_e[i];
+            sym_she_symtab=&sh_e[i];
+        }
+
+        if( strcmp(sh_e[i].sh_name,".rel.text") == 0 ){
+            sym_she_reltxt=&sh_e[i];
+        }
+
+        if( strcmp(sh_e[i].sh_name,".rel.data") == 0 ){
+            sym_she_reldata=&sh_e[i];
         }
     }
 
-    assert( sym_sh_e!=NULL );
     //process symtab
-    int sym_count  = sym_sh_e->sh_size;
+    int sym_count  = sym_she_symtab->sh_size;
     assert(sym_count>0);
     st_entry_t *st_e = malloc( sym_count * sizeof(st_entry_t) );
     elf->symt_count = sym_count;
     elf->symt = st_e;
 
     for(int i=0;i<sym_count;i++){
-       process_symtab(elf->code[sym_sh_e->sh_offset+i],&elf->symt[i]);
+       process_symtab(elf->code[sym_she_symtab->sh_offset+i],&elf->symt[i]);
     }
 
+    //process  .rel.text
+    if(sym_she_reltxt!=NULL){
+        int relOffset = sym_she_reltxt->sh_offset;
+        int relSize = sym_she_reltxt->sh_size;
+        elf->reltext_count = relSize;
+        rl_entry_t *rle_txt = malloc(relSize * sizeof(rl_entry_t));
+        elf->reltext = rle_txt;
+        for(int i=0;i<relSize;i++){
+            process_relocation(elf->code[i+relOffset],&elf->reltext[i]);
+        }
+    }
+
+    //process  .rel.data
+    if(sym_she_reldata!=NULL){
+        int relOffset = sym_she_reldata->sh_offset;
+        int relSize = sym_she_reldata->sh_size;
+        elf->reldata_count = relSize;
+        rl_entry_t *rle_data = malloc(relSize * sizeof(rl_entry_t));
+        elf->reldata = rle_data;
+        for(int i=0;i<relSize;i++){
+            process_relocation(elf->code[i+relOffset],&elf->reldata[i]);
+        }
+    }
 }
 
 void free_table_entry(char **ent, int n)

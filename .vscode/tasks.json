@@ -22,7 +22,7 @@
         "label": "build_link",
         "command": "/usr/bin/gcc-7",
         "args": [
-            "-Wall", "-g" ,"-O2", "-Werror", "-std=gnu99", "-Wno-unused-function",
+            "-Wall", "-g" ,"-O0", "-Werror", "-std=gnu99", "-Wno-unused-function",
             "-I", "${workspaceFolder}/src",
             "${workspaceFolder}/src/tests/test_parseElf.c",
             "${workspaceFolder}/src/common/print.c",
