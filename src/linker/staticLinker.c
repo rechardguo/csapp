@@ -467,7 +467,6 @@ static void free_smapArr(smap_t *smap ,int smapArr_count){
     
 }
 
-
 static uint64_t get_symbol_runtime_address(elf_t *dst, st_entry_t *sym)
 {
     // get the run-time address of symbol

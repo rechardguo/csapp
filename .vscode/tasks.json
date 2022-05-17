@@ -5,7 +5,13 @@
         "type": "shell",
         "label": "build_algorithm",
         "command": "/usr/bin/gcc-7",
-        "args": ["-g", "${file}", "-I", "${workspaceFolder}/src", "-o", "${fileDirname}/${fileBasenameNoExtension}"],
+        "args": [
+          "-Wall", "-g" ,"-O0",  "-std=gnu99", "-Wno-unused-function",
+           "-I", "${workspaceFolder}/src",
+           "${workspaceFolder}/src/tests/test_algorithm.c",
+           "${workspaceFolder}/src/algorithm/array.c",
+           "-o", "${workspaceFolder}/bin/test_algorithm"
+        ],
         "options": {
           "cwd": "/usr/bin",
 
