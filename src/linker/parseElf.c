@@ -1,0 +1,352 @@
+﻿#include <stdint.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <assert.h>
+#include <headers/common.h>
+#include <headers/linker.h>
+
+/**
+ * @brief 打印出elf sht
+ * 
+ * @param elf 
+ */
+void debug_print_sht(elf_t *elf){
+     int entryCount = elf->sh_entry_count;
+
+     for(int i=0;i<entryCount;i++){
+        sh_entry_t *sh_e = &elf->sht[i];
+        debug_printf(DEBUG_LINKER, 
+        "sh_addr=%s\t sh_addr=%ld\t sh_offset=%ld\t sh_size=%ld\n",
+        sh_e->sh_name,
+        sh_e->sh_addr,
+        sh_e->sh_offset,
+        sh_e->sh_size);
+     }
+}
+
+void debug_print_syt(elf_t *elf){
+     int entryCount = elf->symt_count;
+     for(int i=0;i<entryCount;i++){
+        st_entry_t *st_e = &elf->symt[i];
+       debug_printf(DEBUG_LINKER, 
+       "st_name=%s\t bind=%d\t sh_offset=%d\t st_shndx=%s \t st_value=%ld\t st_size=%ld\n",
+        st_e->st_name,
+        st_e->bind,
+        st_e->type,
+        st_e->st_shndx,
+        st_e->st_value,
+        st_e->st_size);
+     }
+}
+void debug_print_elf(elf_t *elf){
+   for(int i=0;i<elf->lineCount;i++){
+       printf("%s \n",elf->code[i]);
+    }
+}
+
+//test_elf.c   
+//header/linker.h   read_elf(char *file)  global, undefied, .text
+//linker/parseElf.c
+int read_elf(char *file, uint64_t addr){
+   FILE *fp;
+
+    fp = fopen(file,"r");
+    assert( fp!=NULL );
+    if(fp == NULL){
+        printf("file %s does not exist \n" , file);
+        exit(0);
+    }
+
+    int lineCount = 0 ;
+    char line[MAX_PERLINE_LENGTH_IN_ELF_FILE];
+    
+    while( fgets(line, MAX_PERLINE_LENGTH_IN_ELF_FILE, fp) !=NULL ){ // NULL means eof or error, see man fgets
+        // int len = strlen(line);
+        // if( len==0||
+        //    (len>=1  && (line[0]=='\r' || line[0]=='\n' || line[0]=='\t'))||
+        //    (len>2 && line[0]=='/' && line[1]=='/')){
+        //       continue;
+        // }
+
+        int len = strlen(line);
+        if ((len == 0) || 
+            (len >= 1 && (line[0] == '\n' || line[0] == '\r')) ||
+            (len >= 2 && (line[0] == '/' && line[1] == '/')))
+        {
+            continue;
+        }
+
+
+        // check if is empty or white line
+        //最后一位是'\0',需要排除掉，所以是len-1
+        int iswhite = 1;
+        for (int i = 0; i < len-1; ++ i)
+        {
+            iswhite = iswhite && (line[i] == ' ' || line[i] == '\t' || line[i] == '\r');
+        }
+        if (iswhite == 1)
+        {
+            continue;
+        }
+
+      
+        // 加入到elf.code
+        for (int j = 0; j < len; ++ j)
+        {
+              if( line[j] == '\r' || line[j] == '\n' || 
+                 (j+1<len && line[j]=='/' && line[j+1]=='/' )){
+                     break;
+              }
+              
+               char* p= (char*)(addr + (lineCount*(MAX_PERLINE_LENGTH_IN_ELF_FILE)+ j)*sizeof(char)) ;
+               *p= line[j];
+        }
+        lineCount++;
+
+        if(lineCount > MAX_ELF_FILE_LINES)
+        {
+            debug_printf(DEBUG_LINKER, "elf file %s is too long (>%d)\n", file, MAX_ELF_FILE_LINES);
+            fclose(fp);
+            exit(1);
+        }
+
+    }
+    fclose(fp);
+    
+    assert(string2uint((char *)addr) == lineCount);
+    return lineCount; 
+ 
+}
+
+void process_sh(char *sh, sh_entry_t *sh_e){
+     // .text,0x0,6,10
+     //error: ‘cols’ is used uninitialized in this functio
+     //在process_entry里初始化
+     char **cols;
+     int col_num = process_entry(sh, &cols);
+     assert( col_num == 4);   
+     //sh_e->sh_name = cols[0];
+     //为什么这里要用strcpy
+     strcpy(sh_e->sh_name, cols[0]);
+     sh_e->sh_addr = string2uint(cols[1]);
+     sh_e->sh_offset = string2uint(cols[2]);
+     sh_e->sh_size = string2uint(cols[3]);
+
+     free_table_entry(cols, col_num);
+}
+
+
+void process_symtab(char *sh, st_entry_t *st_e){
+     // sum,STB_GLOBAL,STT_FUNC,.text,0,22 
+     //在process_entry里初始化
+     char **cols;
+     int col_num = process_entry(sh, &cols);
+     assert( col_num == 6);   
+     strcpy(st_e->st_name, cols[0]);
+     //strcpy(st_e->bind , cols[1]);
+     //strcpy(st_e->type , cols[2]);
+     
+      // select symbol bind
+    if (strcmp(cols[1], "STB_LOCAL") == 0)
+    {
+        st_e->bind = STB_LOCAL;
+    }
+    else if (strcmp(cols[1], "STB_GLOBAL") == 0)
+    {
+        st_e->bind = STB_GLOBAL;
+    }
+    else if (strcmp(cols[1], "STB_WEAK") == 0)
+    {
+        st_e->bind = STB_WEAK;
+    }
+    else
+    {
+        printf("symbol bind is neiter LOCAL, GLOBAL, nor WEAK\n");
+        exit(0);
+    }
+    
+    // select symbol type 
+    if (strcmp(cols[2], "STT_NOTYPE") == 0)
+    {
+        st_e->type = STT_NOTYPE;
+    }
+    else if (strcmp(cols[2], "STT_OBJECT") == 0)
+    {
+        st_e->type = STT_OBJECT;
+    }
+    else if (strcmp(cols[2], "STT_FUNC") == 0)
+    {
+        st_e->type = STT_FUNC;
+    }
+    else
+    {
+        printf("symbol type is neiter NOTYPE, OBJECT, nor FUNC\n");
+        exit(0);
+    }
+
+     strcpy(st_e->st_shndx , cols[3]);   
+     st_e->st_value = string2uint(cols[4]);
+     st_e->st_size = string2uint(cols[5]);
+
+     free_table_entry(cols, col_num);
+}
+
+/**
+ * @brief 
+ * 
+ * @param sh 
+ * @param cols 
+ * @return int : total cols number 
+ */
+int process_entry(char *sh, char ***cols){
+    assert(sh!=NULL);
+    int len= strlen(sh);
+    int num_cols=1;
+    for (int i = 0; i < len; i++)
+    {
+        if(sh[i] == ','){
+            num_cols++;
+        }
+    }
+
+    //分配指针数组
+    char **arr = malloc(num_cols * sizeof(char *));
+    *cols = arr;
+    
+    char col[32];
+    int colIndex = 0;
+    int colWidth = 0;
+    //strlen不包含\0,所以这里<=len
+    for (int i = 0; i <= len; i++){
+        //i==len 也就是到了\0和','一起处理即可
+        if(sh[i] == ',' || i==len ){
+            assert(colIndex < num_cols);
+            //直接这样写的话会变，col只是一个地址指针，所指向的内容会变化，所以需要再次进行拷贝】
+            //arr[colIndex] = col;
+            char *txt =malloc( (colWidth+1)*sizeof(char) );
+            for( int j=0;j<colWidth;j++){
+                 txt[j] = col[j];   
+            }
+            txt[colWidth] ='\0';
+            arr[colIndex] = txt;
+            colIndex++;
+            colWidth=0;
+            if(i==len-1)
+              printf("i==len-1 , %s \n" ,txt);
+        }else{
+            //不能超过32个字符
+            assert(colWidth<32);
+            col[colWidth] = sh[i];
+            colWidth++;
+        }
+    }
+
+    return colIndex;
+}
+
+void static process_relocation(char *line ,rl_entry_t *rl){
+    char **cols;
+    int cols_size = process_entry(line,&cols);
+    assert( cols_size == 5 );
+    
+    rl->r_row = string2uint(cols[0]);
+    rl->r_col = string2uint(cols[1]);
+    
+    if(strcmp(cols[2] , "R_X86_64_32")==0){
+        rl->type =  R_X86_64_32;
+    }else if(strcmp(cols[2] , "R_X86_64_PC32")==0){
+        rl->type =  R_X86_64_PC32;
+    }else if(strcmp(cols[2] , "R_X86_64_PLT32")==0){
+        rl->type =  R_X86_64_PLT32;
+    }
+    rl->sym = string2uint(cols[3]);
+    rl->r_addend = string2uint(cols[4]);
+}
+
+//从文件里加载
+void parse_elf(char *filename, elf_t *elf){
+    uint64_t addr = (uint64_t)elf->code;
+    int lineCount = read_elf(filename,addr);
+    elf->lineCount = lineCount;
+
+    //process section header
+    uint64_t st_count= string2uint(elf->code[1]);
+    assert(st_count>0);
+    elf->sh_entry_count = st_count;
+
+    sh_entry_t *sh_e = malloc(st_count * sizeof(sh_entry_t));
+
+    elf->sht =sh_e;
+    sh_entry_t *sym_she_symtab = NULL;
+    sh_entry_t *sym_she_reltxt = NULL;  
+    sh_entry_t *sym_she_reldata = NULL;  
+    for(int i=0;i<st_count;i++){
+        process_sh(elf->code[i+2],&sh_e[i]);
+        
+        if( strcmp(sh_e[i].sh_name,".symtab") == 0 ){
+            sym_she_symtab=&sh_e[i];
+        }
+
+        if( strcmp(sh_e[i].sh_name,".rel.text") == 0 ){
+            sym_she_reltxt=&sh_e[i];
+        }
+
+        if( strcmp(sh_e[i].sh_name,".rel.data") == 0 ){
+            sym_she_reldata=&sh_e[i];
+        }
+    }
+
+    //process symtab
+    int sym_count  = sym_she_symtab->sh_size;
+    assert(sym_count>0);
+    st_entry_t *st_e = malloc( sym_count * sizeof(st_entry_t) );
+    elf->symt_count = sym_count;
+    elf->symt = st_e;
+
+    for(int i=0;i<sym_count;i++){
+       process_symtab(elf->code[sym_she_symtab->sh_offset+i],&elf->symt[i]);
+    }
+
+    //process  .rel.text
+    if(sym_she_reltxt!=NULL){
+        int relOffset = sym_she_reltxt->sh_offset;
+        int relSize = sym_she_reltxt->sh_size;
+        elf->reltext_count = relSize;
+        rl_entry_t *rle_txt = malloc(relSize * sizeof(rl_entry_t));
+        elf->reltext = rle_txt;
+        for(int i=0;i<relSize;i++){
+            process_relocation(elf->code[i+relOffset],&elf->reltext[i]);
+        }
+    }
+
+    //process  .rel.data
+    if(sym_she_reldata!=NULL){
+        int relOffset = sym_she_reldata->sh_offset;
+        int relSize = sym_she_reldata->sh_size;
+        elf->reldata_count = relSize;
+        rl_entry_t *rle_data = malloc(relSize * sizeof(rl_entry_t));
+        elf->reldata = rle_data;
+        for(int i=0;i<relSize;i++){
+            process_relocation(elf->code[i+relOffset],&elf->reldata[i]);
+        }
+    }
+}
+
+void free_table_entry(char **ent, int n)
+{
+    for (int i = 0; i < n; ++ i)
+    {
+        free(ent[i]);
+    }
+    free(ent);
+}
+
+
+void free_elf(elf_t *elf)
+{
+    assert(elf != NULL);
+
+    free(elf->sht);
+    free(elf->symt);
+}

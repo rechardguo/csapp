@@ -1,0 +1,14 @@
+﻿//line count
+??all line count
+//section header
+??section header count (s)
+st_name,st_type,offset,total
+.text  
+.common
+.symbol
+
+//text table
+
+//sym table
+
+
