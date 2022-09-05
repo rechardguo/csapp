@@ -91,10 +91,10 @@ void add_reg_reg_handler(uint64_t src,uint64_t dst){
 }
 
 void printStack(){
-    printf("todo printStack");
+    printf("todo printStack \n");
 }
 
 
 void printRegister(){
-    printf("todo printRegister");
+    printf("todo printRegister \n");
 }
